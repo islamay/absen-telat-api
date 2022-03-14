@@ -95,6 +95,6 @@ siswaSchema.post('validate', async function (): Promise<void> {
     this.password = hashedPassword
 })
 
-const UserSiswaModel = mongoose.model<UserSiswa, UserSiswaModel>('siswaUser', siswaSchema, 'siswa')
+const UserSiswaModel = mongoose.model<UserSiswa, UserSiswaModel>('siswaUser', siswaSchema, 'siswa_user')
 export default UserSiswaModel
 

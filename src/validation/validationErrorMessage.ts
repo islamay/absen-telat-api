@@ -1,3 +1,4 @@
+export const generalValidationError = 'Data Tidak Lengkap'
 
 const baseValiationError = (path: string, base: string) => {
     return `${path} Harus Berupa ${base}`

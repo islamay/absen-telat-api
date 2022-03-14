@@ -1,11 +1,12 @@
 import _ from 'lodash'
 import DataSiswaModel, { DataSiswa, Jurusan } from '../models/dataSiswa'
 import Joi from 'joi'
-import BaseError from '../errorHandler/baseError'
-import { BAD_REQUEST } from '../errorHandler/httpStatusCodes'
+import BaseError from '../error/baseError'
+import { BAD_REQUEST } from '../error/httpStatusCodes'
 import { stringBase, emptyValidationError, requiredValidationError, numberBase, numberInteger, numberMax, numberMin, anyOnly, duplicateKeyErrorMessage } from './validationErrorMessage'
 import { duplicateKeyError } from './errorKind'
-
+import validateUniqueness from './validateUniqueness'
+import ValidationError from '../error/validationError'
 
 export const nisValidationErrorMessage = {
     'string.base': stringBase('NIS'),
@@ -69,14 +70,9 @@ const SiswaDataSchema = Joi.object<Omit<DataSiswa, 'kelasString'>>({
         .messages(jurusanValidationErrorMessage)
 })
 
-const validateDataSiswaUniqueness = async (dataSiswa: Omit<DataSiswa, 'kelasString'>) => {
-    const dataSiswaDocument = await DataSiswaModel.findOne({ nis: dataSiswa.nis })
-    if (!_.isNull(dataSiswaDocument)) {
-        throw new BaseError(duplicateKeyError, BAD_REQUEST, true, duplicateKeyErrorMessage('nis'))
-    }
-}
 
-const validateDataSiswa = (dataSiswa: Omit<DataSiswa, 'kelasString'>) => {
+
+const validateDataSiswa = async (dataSiswa: Omit<DataSiswa, 'kelasString'>) => {
 
     const { nis, namaLengkap, kelas, kelasNo, jurusan } = dataSiswa || null
 
@@ -88,7 +84,13 @@ const validateDataSiswa = (dataSiswa: Omit<DataSiswa, 'kelasString'>) => {
         throw new BaseError(validateDataSiswaParameter.error.name, BAD_REQUEST, true, validateDataSiswaParameter.error.message)
     }
 
-    validateDataSiswaUniqueness(dataSiswa)
+    // Now Check For Duplicate Data
+    const error = await validateUniqueness({ path: 'nis', payload: nis }, DataSiswaModel)
+    if (error) {
+        throw new ValidationError(error, 'Duplicate Key Error')
+    }
+
+    return true
 }
 
 

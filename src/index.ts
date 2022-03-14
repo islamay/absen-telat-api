@@ -8,7 +8,7 @@ import createGuruRoutes from './routes/guru'
 import createUserSiswaRoutes from './routes/userSiswa'
 import createDataSiswaRoutes from './routes/dataSiswa'
 import createTerlambatRoutes from './routes/terlambat'
-import errorHandlerMiddleware from './errorHandler/errorHandler'
+import errorHandlerMiddleware from './error/errorHandler'
 const app = express()
 
 app.use(cors())

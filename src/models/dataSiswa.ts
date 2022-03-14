@@ -1,7 +1,7 @@
 
 import mongoose, { Document, Model } from 'mongoose'
-import { BAD_REQUEST } from '../errorHandler/httpStatusCodes';
-import BaseError from '../errorHandler/baseError';
+import { BAD_REQUEST } from '../error/httpStatusCodes';
+import BaseError from '../error/baseError';
 import enumValues from '../helpers/enumValues';
 
 export enum Kelas {
@@ -144,6 +144,6 @@ siswaSchema.pre('save', function (next) {
     next()
 })
 
-const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('siswa', siswaSchema)
+const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('siswa', siswaSchema, 'siswa_data')
 
 export default SiswaModel
