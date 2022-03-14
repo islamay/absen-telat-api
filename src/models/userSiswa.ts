@@ -1,24 +1,30 @@
-import mongoose, { Model } from 'mongoose'
+import mongoose, { Model, Document } from 'mongoose'
 import { hash } from '../helpers/crypto'
 import { createQrCodeDataURL } from '../helpers/createQr'
+import { accountStatus } from '../helpers/accountEnum'
 
-export interface Siswa {
+export interface UserSiswa {
     nis: string;
     namaLengkap: string;
     kelas: number;
     jurusan: string;
     email: string;
     password: string;
+    status: string;
     qrcode: string;
 }
 
 interface SiswaMethods {
-    secureData(): Omit<Siswa, 'password'>;
+    secureData(): Omit<UserSiswa, 'password'>;
 }
 
-interface SiswaModel extends Model<Siswa, {}, SiswaMethods> { }
+export type DocumentBaseISiswa = Document & UserSiswa & SiswaMethods;
 
-const siswaSchema = new mongoose.Schema<Siswa, undefined, SiswaMethods>({
+interface UserSiswaModel extends Model<UserSiswa, {}, SiswaMethods> {
+    findOneByEmail(email: string): Promise<DocumentBaseISiswa | null>
+}
+
+const siswaSchema = new mongoose.Schema<UserSiswa, undefined, SiswaMethods>({
     nis: {
         type: String,
         unique: true,
@@ -47,15 +53,31 @@ const siswaSchema = new mongoose.Schema<Siswa, undefined, SiswaMethods>({
         min: 8,
         max: 100,
     },
+    status: {
+        type: String,
+        enum: [accountStatus.AKTIF, accountStatus.MENUNGGU],
+        default: accountStatus.MENUNGGU
+    },
     qrcode: {
         type: String,
         required: true
     }
 })
 
-siswaSchema.methods.secureData = function (this: Siswa) {
-    const { nis, namaLengkap, kelas, jurusan, qrcode, email } = this
-    return { nis, namaLengkap, kelas, jurusan, qrcode, email }
+siswaSchema.statics.findOneByEmail = async function (this: UserSiswaModel, email: string) {
+    try {
+        const siswa = await this.findOne({ email: email })
+
+        return siswa
+    } catch (error) {
+        console.log(error);
+        return null
+    }
+}
+
+siswaSchema.methods.secureData = function (this: UserSiswa) {
+    const { nis, namaLengkap, kelas, jurusan, qrcode, email, status } = this
+    return { nis, namaLengkap, kelas, jurusan, qrcode, email, status }
 }
 
 siswaSchema.pre('validate', async function (next): Promise<void> {
@@ -73,5 +95,6 @@ siswaSchema.post('validate', async function (): Promise<void> {
     this.password = hashedPassword
 })
 
-const SiswaModel = mongoose.model<Siswa, SiswaModel>('siswa', siswaSchema, 'siswa')
-export default SiswaModel
+const UserSiswaModel = mongoose.model<UserSiswa, UserSiswaModel>('siswaUser', siswaSchema, 'siswa')
+export default UserSiswaModel
+
