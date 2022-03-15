@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express'
+import express, { Request, Response, NextFunction } from 'express'
 import UserSiswaModel, { UserSiswa } from '../models/userSiswa'
 import siswaAuthMiddleware, { middlewareBodyType, middlewareVarKey } from '../middlewares/siswaAuth'
 import TerlambatModel from '../models/keterlambatan'
@@ -11,27 +11,17 @@ const router = express.Router()
 export default () => {
 
 
-    router.post('/', async (req: Request<{}, {}, Omit<UserSiswa, 'qrcode'>>, res: Response) => {
-        const { body } = req
-        if (!body.nis || !body.namaLengkap || !body.kelas || !body.jurusan || !body.email || !body.password)
-            return res.json({ message: 'Data tidak lengkap' }).status(400)
-        const { nis, namaLengkap, kelas, jurusan, email, password } = req.body
-
-        const siswa = await UserSiswaModel.findOne({ nis: nis })
-        if (siswa) return res.send({ message: 'Nis Sudah dipakai' }).status(400)
-
+    router.post('/', async (req: Request<{}, {}, Omit<UserSiswa, 'qrcode' | 'status'>>, res: Response, next: NextFunction) => {
+        const { nis, email, password } = req.body
 
         try {
-            const newSiswa = new UserSiswaModel({ nis, namaLengkap, kelas, jurusan, email, password })
-            await newSiswa.save()
-            const publicData = newSiswa.secureData()
-            const jwt = await createMuridJWT(JSON.stringify(publicData))
-
-
+            const [userSiswaDocument, jwt] = await UserSiswaModel.createSiswaUserAndJwt({ nis, email, password })
+            const publicData = userSiswaDocument.secureData()
             return res.json({ ...publicData, token: jwt }).status(201)
         } catch (error) {
             console.log(error);
-            return res.send({ message: 'Telah terjadi Error' }).status(500)
+
+            next(error)
         }
     })
 

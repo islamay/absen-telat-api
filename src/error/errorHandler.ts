@@ -11,7 +11,7 @@ const createErrorMiddleware = () => {
 
         if (err instanceof BaseError) {
             res.status(err.statusCode)
-            res.json(err.getErrorNameAndDescriptionObject())
+            res.json(err.getFormattedError())
         } else {
             return res.sendStatus(500)
         }

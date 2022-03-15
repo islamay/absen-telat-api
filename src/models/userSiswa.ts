@@ -2,12 +2,11 @@ import mongoose, { Model, Document } from 'mongoose'
 import { hash } from '../helpers/crypto'
 import { createQrCodeDataURL } from '../helpers/createQr'
 import { accountStatus } from '../helpers/accountEnum'
+import validateUserSiswa from '../validation/userSiswa';
+import { createMuridJWT as createSiswaJwt } from '../helpers/jwtManager';
 
 export interface UserSiswa {
     nis: string;
-    namaLengkap: string;
-    kelas: number;
-    jurusan: string;
     email: string;
     password: string;
     status: string;
@@ -21,6 +20,7 @@ interface SiswaMethods {
 export type DocumentBaseISiswa = Document & UserSiswa & SiswaMethods;
 
 interface UserSiswaModel extends Model<UserSiswa, {}, SiswaMethods> {
+    createSiswaUserAndJwt(userSiswa: Omit<UserSiswa, 'status' | 'qrcode'>): Promise<[DocumentBaseISiswa, string]>,
     findOneByEmail(email: string): Promise<DocumentBaseISiswa | null>
 }
 
@@ -29,18 +29,6 @@ const siswaSchema = new mongoose.Schema<UserSiswa, undefined, SiswaMethods>({
         type: String,
         unique: true,
         required: true,
-    },
-    namaLengkap: {
-        type: String,
-        required: true
-    },
-    kelas: {
-        type: Number,
-        required: true
-    },
-    jurusan: {
-        type: String,
-        required: true
     },
     email: {
         type: String,
@@ -64,6 +52,22 @@ const siswaSchema = new mongoose.Schema<UserSiswa, undefined, SiswaMethods>({
     }
 })
 
+siswaSchema.statics.createSiswaUserAndJwt = async function (this: UserSiswaModel, userSiswa: UserSiswa) {
+    try {
+        await validateUserSiswa(userSiswa)
+        const userSiswaDocument = new this(userSiswa)
+        const savingDocument = userSiswaDocument.save()
+        const createSiswaJwtTask = createSiswaJwt(userSiswaDocument.nis)
+
+        const promises = await Promise.all([savingDocument, createSiswaJwtTask])
+        const jwt = promises[1]
+
+        return [userSiswaDocument, jwt]
+    } catch (error) {
+        throw error
+    }
+}
+
 siswaSchema.statics.findOneByEmail = async function (this: UserSiswaModel, email: string) {
     try {
         const siswa = await this.findOne({ email: email })
@@ -76,13 +80,13 @@ siswaSchema.statics.findOneByEmail = async function (this: UserSiswaModel, email
 }
 
 siswaSchema.methods.secureData = function (this: UserSiswa) {
-    const { nis, namaLengkap, kelas, jurusan, qrcode, email, status } = this
-    return { nis, namaLengkap, kelas, jurusan, qrcode, email, status }
+    const { nis, qrcode, email, status } = this
+    return { nis, qrcode, email, status }
 }
 
 siswaSchema.pre('validate', async function (next): Promise<void> {
-    const { nis, namaLengkap, kelas, jurusan, email } = this
-    const payload = { nis, namaLengkap, kelas, jurusan, email }
+    const { nis, email } = this
+    const payload = { nis, email }
     const qrDataUrl = await createQrCodeDataURL(payload)
 
     this.qrcode = qrDataUrl

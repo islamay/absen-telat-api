@@ -19,8 +19,8 @@ export const verifyGuruJwt = async (token: string) => {
     }
 }
 
-export const createMuridJWT = async (muridData: string) => {
-    const token = await jsonwebtoken.sign(muridData, process.env.MURID_JWT_KEY)
+export const createMuridJWT = async (nis: string) => {
+    const token = await jsonwebtoken.sign(nis, process.env.MURID_JWT_KEY)
     return token
 }
 

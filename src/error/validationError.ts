@@ -29,6 +29,21 @@ class ValidationError extends Api400Error {
         }
 
     }
+
+    getFormattedError() {
+        if (this.isMany) {
+            return {
+                name: this.name,
+                message: this.message,
+                errors: this.errors
+            }
+        } else {
+            return {
+                name: this.name,
+                message: this.message
+            }
+        }
+    }
 }
 
 

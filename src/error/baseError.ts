@@ -14,10 +14,10 @@ class BaseError extends Error {
         Error.captureStackTrace(this)
     }
 
-    getErrorNameAndDescriptionObject() {
+    getFormattedError(): any {
         const errorNameAndDescriptionObject = {
-            errorName: this.name,
-            errorMessage: this.message
+            name: this.name,
+            message: this.message
         }
 
         return errorNameAndDescriptionObject

@@ -24,12 +24,15 @@ const validateUniqueness = async (path: PathParam | PathParam[], Model: mongoose
             return checkUniqueness
         })
 
-        await Promise.all(checkAllUniqueness)
-        const errors = checkAllUniqueness.map((result, index) => {
-            if (!_.isNull(result) || !_.isUndefined(result)) {
+        const results = await Promise.all(checkAllUniqueness)
+        const errors = results.map((result, index) => {
+
+            if (_.isNull(result) || _.isUndefined(result)) {
+                return null
+            } else {
                 return { [order[index]]: duplicateKeyErrorMessage(order[index]) }
             }
-        })
+        }).filter(error => !_.isNull(error))
 
         if (_.isEmpty(errors)) {
             return false

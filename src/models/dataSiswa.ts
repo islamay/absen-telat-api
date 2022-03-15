@@ -1,8 +1,6 @@
 
 import mongoose, { Document, Model } from 'mongoose'
-import { BAD_REQUEST } from '../error/httpStatusCodes';
-import BaseError from '../error/baseError';
-import enumValues from '../helpers/enumValues';
+import enumValues from '../helpers/enumValues'
 
 export enum Kelas {
     X = 10,

@@ -1,11 +1,28 @@
 export const generalValidationError = 'Data Tidak Lengkap'
 
+enum LimitType {
+    max = 'MAX',
+    min = 'MIN'
+}
+
 const baseValiationError = (path: string, base: string) => {
     return `${path} Harus Berupa ${base}`
 }
 
 export const stringBase = (path: string) => {
     return baseValiationError(path, 'Huruf')
+}
+
+export const stringEmail = (path: string) => {
+    return `${path} Harus Berupa Valid Email`
+}
+
+export const stringMin = (path: string, min: number) => {
+    return `${path} Tidak Boleh Kurang Dari ${min} Huruf`
+}
+
+export const stringMax = (path: string, max: number) => {
+    return `${path} Tidak Boleh Lebih Dari ${max} Huruf`
 }
 
 export const emptyValidationError = (path: string) => {
@@ -24,10 +41,7 @@ export const numberInteger = (path: string) => {
     return `${path} Harus Merupakan Bilangan Bulat`
 }
 
-enum LimitType {
-    max = 'MAX',
-    min = 'MIN'
-}
+
 
 const numberLimit = (path: string, limitType: LimitType, limit: number) => {
     const limitString = limitType === LimitType.max ? 'Lebih Besar' : 'Lebih Kecil'
