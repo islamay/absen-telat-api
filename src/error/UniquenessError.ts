@@ -1,6 +1,5 @@
-import { generalValidationError } from '../validation/validationErrorMessage';
-import _ from 'lodash'
 import Api400Error from './Api400Error';
+import _ from 'lodash'
 
 interface IErrorParam {
     [path: string]: string,
@@ -8,12 +7,12 @@ interface IErrorParam {
 
 type ErrorParam = IErrorParam | IErrorParam[]
 
-class ValidationError extends Api400Error {
+class UniquenessError extends Api400Error {
     isMany: boolean
     errors?: { [path: string]: string }
 
     constructor(error: ErrorParam, description?: string) {
-        const name = 'ValidationError'
+        const name = 'DuplicateKeyError'
 
         if (!_.isArray(error)) {
             const key = _.keys(error)[0]
@@ -27,7 +26,7 @@ class ValidationError extends Api400Error {
             this.isMany = false
 
         } else {
-            super(description || name, description || generalValidationError)
+            super(description || name, description)
             const errors = Object.assign({}, ...error)
 
             this.isMany = true
@@ -52,5 +51,4 @@ class ValidationError extends Api400Error {
     }
 }
 
-
-export default ValidationError
+export default UniquenessError

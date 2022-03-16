@@ -1,8 +1,9 @@
-import express, { Request, Response } from 'express'
-import GuruModel, { IGuru, KnownError as GuruError } from '../models/guru'
+import express, { Request, Response, NextFunction } from 'express'
+import GuruModel, { IGuru, IGuruAsParam, KnownError as GuruError } from '../models/guru'
 import { createGuruJWT } from '../helpers/jwtManager'
 import { compare } from '../helpers/crypto'
 import isKnownError from '../helpers/isKnownError'
+import _ from 'lodash'
 
 const router = express.Router()
 
@@ -12,25 +13,19 @@ const createRoutes = () => {
         res.sendStatus(200)
     })
 
-    router.post('/', async (req: Request<{}, {}, IGuru>, res: Response) => {
-        const { body } = req
-        if (!body.email || !body.namaLengkap)
-            return res.json({ message: 'Data Tidak Lengkap' }).status(400)
-        const { email, namaLengkap, password } = body
-
-        const newGuru = new GuruModel({ email, namaLengkap, password })
-        await newGuru.save()
-        const publicData = newGuru.secureData()
-        const jwt = await createGuruJWT(JSON.stringify(publicData))
-
-        try {
-
-            return res.status(201).json({ ...publicData, token: jwt })
-        } catch (error) {
-            console.log(error.message);
-            return res.json({ message: 'Server Error' }).status(500)
-        }
-    })
+    {
+        type ReqBody = IGuruAsParam;
+        router.post('/registrasi', async (req: Request<{}, {}, ReqBody>, res: Response, next: NextFunction) => {
+            const { body } = req
+            try {
+                const [guruDocument, jwt] = await GuruModel.createGuruAndJwt(body)
+                const guruPublicData = guruDocument.secureData()
+                res.status(201).json(_.assign(guruPublicData, { token: jwt }))
+            } catch (error) {
+                next(error)
+            }
+        })
+    }
 
     {
         type ThisBodyType = { email: string, password: string };

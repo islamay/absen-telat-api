@@ -69,7 +69,7 @@ const validateUserSiswa = async (userSiswa: Omit<UserSiswa, 'status' | 'qrcode'>
 
     const errors = await validateUniqueness([{ path: 'nis', payload: userSiswa.nis }, { path: 'email', payload: userSiswa.email }], UserSiswaModel)
     if (errors) {
-        throw new ValidationError(errors, 'Duplicate Key Error')
+        throw new ValidationError(errors, 'DuplicateKeyError')
     } else {
     }
 

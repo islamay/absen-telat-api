@@ -1,6 +1,8 @@
 import { model, Schema, Document, Model } from 'mongoose'
 import { hash } from '../helpers/crypto'
 import { accountStatus } from '../helpers/accountEnum';
+import validateGuru from '../validation/guru';
+import { createGuruJWT } from '../helpers/jwtManager';
 
 export enum guruRole {
     STANDAR = 'STANDAR',
@@ -15,6 +17,8 @@ export interface IGuru {
     role: guruRole
 }
 
+export type IGuruAsParam = Omit<IGuru, 'status' | 'role'>
+
 export enum KnownError {
     NotFound = 'Email Tidak Ditemukan'
 }
@@ -26,7 +30,8 @@ export interface IGuruMethods {
 export type DocumentBaseIGuru = Document & IGuru & IGuruMethods
 
 export interface IGuruModel extends Model<IGuru, {}, IGuruMethods> {
-    findByEmail(email: string): DocumentBaseIGuru
+    findByEmail(email: string): DocumentBaseIGuru;
+    createGuruAndJwt(guru: IGuruAsParam): Promise<[DocumentBaseIGuru, string]>;
 }
 
 
@@ -60,6 +65,24 @@ const guruSchema = new Schema<IGuru, {}, IGuruMethods>({
         default: accountStatus.MENUNGGU
     }
 })
+
+guruSchema.statics.createGuruAndJwt = async function (this: IGuruModel, guru: IGuruAsParam): Promise<[DocumentBaseIGuru, string]> {
+    const { namaLengkap, email, password } = guru
+    try {
+        await validateGuru({ namaLengkap, email, password })
+        const guruDocument = new this({ namaLengkap, email, password })
+        console.log(guruDocument._id);
+
+        const savingDocument = guruDocument.save()
+        const createGuruJwtTask = createGuruJWT(guruDocument._id.toString())
+        const promisesResult = await Promise.all([savingDocument, createGuruJwtTask])
+        const jwt = promisesResult[1]
+
+        return [guruDocument, jwt]
+    } catch (error) {
+
+    }
+}
 
 guruSchema.statics.findByEmail = async function (email) {
     const guru = await GuruModel.findOne({ email: email })
