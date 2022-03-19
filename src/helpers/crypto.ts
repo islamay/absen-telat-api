@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import bcrypt from 'bcrypt'
+import Api401Error from '../error/Api401Error'
 
 export const hash = async (data: string) => {
     try {
@@ -12,6 +13,8 @@ export const hash = async (data: string) => {
 }
 
 export const compare = async (plain: string, hashed: string) => {
-    const isMatched = bcrypt.compare(plain, hashed)
-    return isMatched
+    const isMatched = await bcrypt.compare(plain, hashed)
+    if (!isMatched) {
+        throw new Api401Error('Password Salah')
+    }
 }

@@ -7,5 +7,6 @@ export enum accountRole {
 
 export enum accountStatus {
     AKTIF = 'AKTIF',
-    MENUNGGU = 'MENUNGGU'
+    MENUNGGU = 'MENUNGGU',
+    NONAKTIF = 'NONAKTIF'
 }

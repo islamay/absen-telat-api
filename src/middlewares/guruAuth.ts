@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from 'express'
-import { verifyGuruJwt, KnownJwtError } from '../helpers/jwtManager'
+import { verifyGuruJwt, KnownJwtError, guruJwtPayload } from '../helpers/jwtManager'
 import middlewareVar from '../helpers/middlewareVar'
 import isKnownError from '../helpers/isKnownError'
-import { DocumentBaseIGuru } from '../models/guru'
+import GuruModel, { DocumentBaseIGuru } from '../models/guru'
 import { accountStatus } from '../helpers/accountEnum'
+import splitBearerToken from '../helpers/splitBearerToken'
+import Api500Error from '../error/Api500Error'
+import Api401Error from '../error/Api401Error'
+import { JwtPayload } from 'jsonwebtoken'
 
 export enum KnownError {
     tokenEmpty = 'Tidak memiliki Akses'
@@ -12,30 +16,35 @@ export enum KnownError {
 export const middlewareVarKey = 'guruAuth'
 
 export interface middlewareBodyType {
-    [middlewareVarKey]: DocumentBaseIGuru
+    guruAuth: {
+        token: string,
+        decodedToken: JwtPayload & guruJwtPayload,
+        guruDocument: DocumentBaseIGuru,
+    }
 }
 
-const guruAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    const bearerToken = req.headers.authorization
-    if (!bearerToken) return res.status(401).send({ message: KnownError.tokenEmpty })
 
-    const token = bearerToken.split(' ')[1]
+
+const guruAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
 
     try {
-
+        const token = splitBearerToken(req.headers.authorization)
         const decodedToken = await verifyGuruJwt(token)
-        if (typeof decodedToken === 'string') return res.sendStatus(500)
-
-        if (decodedToken.status === accountStatus.MENUNGGU) {
-            return res.sendStatus(401)
+        if (typeof decodedToken === 'string') {
+            throw new Api500Error()
         }
 
-        middlewareVar(req, decodedToken, middlewareVarKey)
+        if (decodedToken.status === accountStatus.MENUNGGU) {
+            throw new Api401Error('Akun Tidak Aktif')
+        }
+
+        const guruDocument = await GuruModel.findOneByToken(token)
+
+        middlewareVar(req, { decodedToken, guruDocument, token }, middlewareVarKey)
 
         next()
     } catch (error) {
-        if (isKnownError(error.message, KnownJwtError)) { return res.status(400).send({ message: error.message }) }
-        else return res.status(500).send({ message: 'Server Error' })
+        next(error)
     }
 
 }

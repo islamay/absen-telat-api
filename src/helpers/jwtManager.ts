@@ -1,34 +1,84 @@
 import 'dotenv/config'
-import jsonwebtoken from 'jsonwebtoken'
+import jsonwebtoken, { JsonWebTokenError } from 'jsonwebtoken'
+import _ from 'lodash'
+import { Types } from 'mongoose'
+import Api401Error from '../error/Api401Error'
+import Api500Error from '../error/Api500Error'
+import { DocumentBaseIGuru, guruRole } from '../models/guru'
+import { DocumentBaseUserSiswa } from '../models/userSiswa'
+import { accountRole, accountStatus } from './accountEnum'
+import SiswaModel from '../models/dataSiswa'
+
+
 
 export enum KnownJwtError {
     InvalidJwt = "Token Invalid"
 }
 
-export const createGuruJWT = async (guruData: string) => {
-    const token = await jsonwebtoken.sign(guruData, process.env.GURU_JWT_KEY)
-    return token
+
+interface jwtPayload {
+    _id: Types.ObjectId,
+    accType: accountRole,
+    accStatus: accountStatus
 }
 
-export const verifyGuruJwt = async (token: string) => {
+export interface guruJwtPayload extends jwtPayload {
+    role: guruRole
+}
+
+export interface siswaJwtPayload extends jwtPayload {
+    nis: string,
+}
+
+
+
+export const createGuruJWT = async (guruData: DocumentBaseIGuru) => {
     try {
-        const isValidToken = jsonwebtoken.verify(token, process.env.GURU_JWT_KEY)
-        return isValidToken
+        const { _id, role, status: accStatus } = guruData
+        const accType = accountRole.GURU
+        const payload: guruJwtPayload = { _id, accStatus, accType, role }
+        const token = await jsonwebtoken.sign(payload, process.env.GURU_JWT_KEY, { expiresIn: '7days' })
+        return token
     } catch (error) {
-        throw new Error(KnownJwtError.InvalidJwt)
+        console.log(error);
+        throw new Api500Error()
     }
 }
 
-export const createMuridJWT = async (nis: string) => {
-    const token = await jsonwebtoken.sign(nis, process.env.MURID_JWT_KEY)
-    return token
+export const verifyGuruJwt = async (token: string): Promise<jsonwebtoken.JwtPayload & guruJwtPayload> => {
+    try {
+        const decodedToken = jsonwebtoken.verify(token, process.env.GURU_JWT_KEY)
+        if (_.isString(decodedToken)) throw new Api401Error('Invalid Token')
+
+        return (decodedToken as jsonwebtoken.JwtPayload & guruJwtPayload)
+    } catch (error) {
+        throw error
+    }
 }
 
-export const verifyMuridJwt = async (token: string) => {
+export const createMuridJWT = async (userSiswaDocument: DocumentBaseUserSiswa): Promise<string> => {
+
     try {
-        const isValidToken = jsonwebtoken.verify(token, process.env.MURID_JWT_KEY)
-        return isValidToken
+        const siswaDocument = await SiswaModel.findOne({ nis: userSiswaDocument.nis })
+        if (!siswaDocument) throw new Api401Error('Token is Invalid')
+
+        const { _id, nis } = siswaDocument
+        const payload: siswaJwtPayload = { _id, nis, accType: accountRole.SISWA, accStatus: userSiswaDocument.status }
+        const token = await jsonwebtoken.sign(payload, process.env.SISWA_JWT_KEY, { expiresIn: '7days' })
+        return token
     } catch (error) {
-        throw new Error(KnownJwtError.InvalidJwt)
+        throw error
+    }
+}
+
+export const verifyMuridJwt = async (token: string): Promise<jsonwebtoken.JwtPayload & siswaJwtPayload> => {
+    try {
+        const decodedToken = jsonwebtoken.verify(token, process.env.SISWA_JWT_KEY)
+        if (_.isString(decodedToken)) throw new Api401Error('Invalid Token')
+
+
+        return (decodedToken as jsonwebtoken.JwtPayload & siswaJwtPayload)
+    } catch (error) {
+        throw error
     }
 }

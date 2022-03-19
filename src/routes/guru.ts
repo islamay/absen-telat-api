@@ -1,60 +1,159 @@
+import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
+import guruAuthMiddleware, { middlewareBodyType } from '../middlewares/guruAuth'
+import GuruModel, { IGuruAsParam, guruRole } from '../models/guru'
 import express, { Request, Response, NextFunction } from 'express'
-import GuruModel, { IGuru, IGuruAsParam, KnownError as GuruError } from '../models/guru'
-import { createGuruJWT } from '../helpers/jwtManager'
-import { compare } from '../helpers/crypto'
-import isKnownError from '../helpers/isKnownError'
+import createAdminAuthMiddleware from '../middlewares/adminAuth'
+import { check, validationResult } from 'express-validator'
+import { accountStatus } from '../helpers/accountEnum'
+import Api401Error from '../error/Api401Error'
+import Api404Error from '../error/Api404Error'
+import { Types } from 'mongoose'
 import _ from 'lodash'
+
 
 const router = express.Router()
 
 const createRoutes = () => {
-
-    router.get('/', async (req: Request, res: Response) => {
-        res.sendStatus(200)
-    })
+    const adminAuthMiddleware = createAdminAuthMiddleware()
 
     {
-        type ReqBody = IGuruAsParam;
-        router.post('/registrasi', async (req: Request<{}, {}, ReqBody>, res: Response, next: NextFunction) => {
-            const { body } = req
-            try {
-                const [guruDocument, jwt] = await GuruModel.createGuruAndJwt(body)
-                const guruPublicData = guruDocument.secureData()
-                res.status(201).json(_.assign(guruPublicData, { token: jwt }))
-            } catch (error) {
-                next(error)
+        interface ReqQuery {
+            status?: guruRole,
+        }
+        router.get('/',
+            adminAuthMiddleware,
+            async (req: Request<{}, {}, {}, ReqQuery>, res: Response, next: NextFunction) => {
+                const query = {}
+                if (_.isString(req.query.status)) _.assign(query, { status: req.query.status })
+
+                try {
+                    const guruDocuments = await GuruModel.find(query)
+                    if (_.isEmpty(guruDocuments)) throw new Api404Error('Guru Tidak Ditemukan')
+
+                    res.status(200).json(guruDocuments)
+                } catch (error) {
+                    next(error)
+                }
             }
-        })
+        )
     }
 
     {
-        type ThisBodyType = { email: string, password: string };
-        router.post('/login', async (req: Request<{}, {}, ThisBodyType>, res: Response) => {
-            const { body } = req
-            if (!body.email || !body.password) return res.status(400).json({ message: 'Data Tidak Lengkap' })
-
-            const { email, password } = body
-            try {
-                const guru = await GuruModel.findByEmail(email)
-                const { password: realPassword } = guru
-
-                const isCorrect = await compare(password, realPassword)
-                if (!isCorrect) return res.status(401).json({ message: 'Password Salah' })
-
+        enum bodyEnum {
+            namaLengkap = 'namaLengkap',
+            email = 'email',
+            password = 'password'
+        }
+        type BodyType = IGuruAsParam;
+        router.post('/signup', adminAuthMiddleware,
+            check(bodyEnum.namaLengkap)
+                .notEmpty()
+                .withMessage('Nama Lengkap Harus Diisi')
+                .isString()
+                .withMessage('Nama Lengkap Harus Berupa Text'),
+            check(bodyEnum.email)
+                .notEmpty()
+                .withMessage('Email Harus Diisi')
+                .isEmail()
+                .withMessage('Email Tidak Valid'),
+            check(bodyEnum.password)
+                .notEmpty()
+                .withMessage('Password Harus Diisi'),
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
                 try {
-                    const publicData = guru.secureData()
-                    const token = await createGuruJWT(JSON.stringify(guru))
-                    return res.json({ ...publicData, token: token })
+                    handleExpressValidatorError(validationResult(req))
+                    const [guruDocument, jwt] = await GuruModel.createGuruAndJwt(req.body)
+                    const guruPublicData = guruDocument.secureData()
+                    res.status(201).json(_.assign(guruPublicData, { token: jwt }))
                 } catch (error) {
-                    return res.status(500).json({ message: 'Server Error' })
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        enum bodyField {
+            email = 'email',
+            password = 'password'
+        }
+        type ThisBodyType = { email: string, password: string };
+        router.post('/signin',
+            check(bodyField.email)
+                .notEmpty()
+                .withMessage('Email Harus Diisi')
+                .isEmail()
+                .withMessage('Email Tidak Valid'),
+            check(bodyField.password)
+                .notEmpty()
+                .withMessage('Password Harus Diisi')
+                .isString()
+                .withMessage('Password Harus Berupa Text')
+            ,
+            async (req: Request<{}, {}, ThisBodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+
+                    const { email, password } = req.body
+                    const [guruDocument, jwt] = await GuruModel.login(email, password)
+                    const publicData = guruDocument.secureData()
+                    return res.json({ ...publicData, token: jwt })
+                } catch (error) {
+                    return next(error)
                 }
 
-            } catch (error) {
-                if (isKnownError(error.message, GuruError)) { return res.status(404).json({ message: error.message }) }
-                else return res.status(500).json({ message: 'Server Error' })
-            }
+            })
+    }
 
-        })
+    {
+        interface BodyType {
+            middleware: middlewareBodyType
+        }
+        router.get('/signout',
+            guruAuthMiddleware,
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
+                const { guruDocument, token } = req.body.middleware.guruAuth
+                try {
+                    await guruDocument.removeToken(token)
+                    res.sendStatus(200)
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        enum bodyFields {
+            id = 'id'
+        }
+        type ReqBody = { id: string };
+        router.put('/aktivasi',
+            adminAuthMiddleware,
+            check(bodyFields.id)
+                .notEmpty()
+                .withMessage('Id Harus Diisi')
+                .custom(value => {
+                    const isValid = Types.ObjectId.isValid(value)
+                    if (!isValid) return Promise.reject('Id Tidak Valid')
+                    return true
+                }),
+            async (req: Request<{}, {}, ReqBody>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+
+                    const { id } = req.body
+                    const guruDocoment = await GuruModel.findById(id)
+                    if (!guruDocoment) throw new Api401Error(`Guru Dengan Id ${id} Tidak Ditemukan`)
+                    await guruDocoment.changeStatus(accountStatus.AKTIF)
+                    res.sendStatus(200)
+                } catch (error) {
+                    console.log(error);
+
+                    next(error)
+                }
+            }
+        )
     }
 
     return router

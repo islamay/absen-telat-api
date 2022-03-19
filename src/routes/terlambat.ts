@@ -16,7 +16,7 @@ const createTerlambatRoutes = () => {
 
             if (!body.nis) return res.status(400).json({ message: 'Data Tidak Lengkap' })
 
-            const idGuru = body.middleware[guruMiddlewareVarKey]._id
+            const idGuru = body.middleware[guruMiddlewareVarKey].decodedToken._id
             const { nis } = body
 
             const terlambat = new KeterlambatanModel({ idGuru, nis })

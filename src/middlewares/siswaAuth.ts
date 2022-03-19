@@ -1,35 +1,42 @@
 import { Request, Response, NextFunction } from 'express'
-import { verifyMuridJwt, KnownJwtError } from '../helpers/jwtManager'
+import { siswaJwtPayload, verifyMuridJwt, } from '../helpers/jwtManager'
 import middlewareVar from '../helpers/middlewareVar'
 import isKnownError from '../helpers/isKnownError'
-import { DocumentBaseISiswa } from '../models/userSiswa'
+import UserSiswaModel, { DocumentBaseUserSiswa } from '../models/userSiswa'
 import { accountStatus } from '../helpers/accountEnum'
+import splitBearerToken from '../helpers/splitBearerToken'
+import { Types } from 'mongoose'
+import Api401Error from '../error/Api401Error'
+import { JwtPayload } from 'jsonwebtoken'
 export const middlewareVarKey = 'siswaAuth'
 export enum KnownError {
     tokenEmpty = 'Tidak memiliki Akses'
 }
-export interface middlewareBodyType extends DocumentBaseISiswa { }
+export interface middlewareBodyType {
+    siswaAuth: {
+        decodedToken: JwtPayload & siswaJwtPayload,
+        userSiswaDocument: DocumentBaseUserSiswa
+    }
+}
 
 
 const siswaAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    const bearerToken = req.headers.authorization
-    if (!bearerToken) return res.status(401).json({ message: KnownError.tokenEmpty })
-
-    const token = bearerToken.split(' ')[1]
     try {
+        const token = splitBearerToken(req.headers.authorization)
         const decodedToken = await verifyMuridJwt(token)
-        if (typeof decodedToken === 'string') return res.sendStatus(500)
+        const { _id: id } = decodedToken
 
-        if (decodedToken.status === accountStatus.MENUNGGU) {
-            return res.sendStatus(401)
-        }
+        if (decodedToken.status === accountStatus.MENUNGGU) throw new Api401Error('Token Tidak Valid')
+        if (!Types.ObjectId.isValid(id)) throw new Api401Error('Token Tidak Valid')
 
-        middlewareVar(req, decodedToken, middlewareVarKey)
+        const userSiswaDocument = await UserSiswaModel.findOneByToken(token)
+
+
+        middlewareVar(req, { decodedToken, userSiswaDocument }, middlewareVarKey)
 
         next()
     } catch (error) {
-        if (isKnownError(error.message, KnownJwtError)) { return res.status(400).json({ message: error.message }) }
-        else return res.status(500).json({ message: 'Server Error' })
+        next(error)
     }
 }
 

@@ -4,24 +4,37 @@ import { createQrCodeDataURL } from '../helpers/createQr'
 import { accountStatus } from '../helpers/accountEnum'
 import validateUserSiswa from '../validation/userSiswa';
 import { createMuridJWT as createSiswaJwt } from '../helpers/jwtManager';
+import SiswaDataModel, { DataSiswa } from './dataSiswa';
+import Api500Error from '../error/Api500Error';
+import _ from 'lodash';
+import Api400Error from '../error/Api400Error';
+import Api404Error from '../error/Api404Error';
+import { compare } from '../helpers/crypto';
+import Api401Error from '../error/Api401Error';
 
 export interface UserSiswa {
     nis: string;
     email: string;
     password: string;
-    status: string;
-    qrcode: string;
+    status: accountStatus;
+    tokens: { token: string }[];
 }
+
+
 
 interface SiswaMethods {
-    secureData(): Omit<UserSiswa, 'password'>;
+    secureData(): Omit<UserSiswa, 'password' | 'tokens'>;
+    getSiswaFullData(): Promise<DataSiswa>;
+    changeStatus(status: accountStatus): Promise<void>
 }
 
-export type DocumentBaseISiswa = Document & UserSiswa & SiswaMethods;
+export type DocumentBaseUserSiswa = Document & UserSiswa & SiswaMethods;
 
 interface UserSiswaModel extends Model<UserSiswa, {}, SiswaMethods> {
-    createSiswaUserAndJwt(userSiswa: Omit<UserSiswa, 'status' | 'qrcode'>): Promise<[DocumentBaseISiswa, string]>,
-    findOneByEmail(email: string): Promise<DocumentBaseISiswa | null>
+    createSiswaUserAndJwt(userSiswa: Omit<UserSiswa, 'status' | 'qrcode' | 'tokens'>): Promise<[DocumentBaseUserSiswa, string]>,
+    findOneByEmail(email: string): Promise<DocumentBaseUserSiswa>,
+    findOneByToken(token: string): Promise<DocumentBaseUserSiswa>,
+    login(email: string, password: string): Promise<[DocumentBaseUserSiswa, string]>
 }
 
 const siswaSchema = new mongoose.Schema<UserSiswa, undefined, SiswaMethods>({
@@ -46,21 +59,21 @@ const siswaSchema = new mongoose.Schema<UserSiswa, undefined, SiswaMethods>({
         enum: [accountStatus.AKTIF, accountStatus.MENUNGGU],
         default: accountStatus.MENUNGGU
     },
-    qrcode: {
-        type: String,
-        required: true
-    }
+    tokens: [{
+        token: {
+            type: String
+        }
+    }]
 })
 
 siswaSchema.statics.createSiswaUserAndJwt = async function (this: UserSiswaModel, userSiswa: UserSiswa) {
     try {
         await validateUserSiswa(userSiswa)
         const userSiswaDocument = new this(userSiswa)
-        const savingDocument = userSiswaDocument.save()
-        const createSiswaJwtTask = createSiswaJwt(userSiswaDocument.nis)
+        const jwt = await createSiswaJwt(userSiswaDocument)
 
-        const promises = await Promise.all([savingDocument, createSiswaJwtTask])
-        const jwt = promises[1]
+        userSiswaDocument.tokens.push({ token: jwt })
+        await userSiswaDocument.save()
 
         return [userSiswaDocument, jwt]
     } catch (error) {
@@ -72,31 +85,87 @@ siswaSchema.statics.findOneByEmail = async function (this: UserSiswaModel, email
     try {
         const siswa = await this.findOne({ email: email })
 
+        if (_.isNull(siswa) || _.isUndefined(siswa)) {
+            throw new Api404Error('Email Tidak Ditemukan')
+        }
+
         return siswa
+
     } catch (error) {
         console.log(error);
-        return null
+        throw new Api500Error()
+    }
+}
+
+siswaSchema.statics.findOneByToken = async function (this: UserSiswaModel, token) {
+    try {
+        const userSiswaDocument = await this.findOne({ 'tokens.token': token })
+        if (!userSiswaDocument) throw new Api401Error('Token Tidak Valid')
+    } catch (error) {
+        throw error
+    }
+}
+
+siswaSchema.statics.login = async function (this: UserSiswaModel, email: string, password: string) {
+    try {
+        const userSiswaDocument = await this.findOneByEmail(email)
+        await compare(password, userSiswaDocument.password)
+
+        const jwt = await createSiswaJwt(userSiswaDocument)
+        userSiswaDocument.tokens.push({ token: jwt })
+        await userSiswaDocument.save()
+
+        return [userSiswaDocument, jwt]
+
+    } catch (error) {
+        throw error
     }
 }
 
 siswaSchema.methods.secureData = function (this: UserSiswa) {
-    const { nis, qrcode, email, status } = this
-    return { nis, qrcode, email, status }
+    const { nis, email, status } = this
+    return { nis, email, status }
 }
 
-siswaSchema.pre('validate', async function (next): Promise<void> {
-    const { nis, email } = this
-    const payload = { nis, email }
-    const qrDataUrl = await createQrCodeDataURL(payload)
+siswaSchema.methods.getSiswaFullData = async function (this: UserSiswa) {
+    const { nis } = this
 
-    this.qrcode = qrDataUrl
-    next()
-})
+    try {
+        const siswaDataDocument = await SiswaDataModel.findOne({ nis: nis })
+        if (_.isNull(siswaDataDocument) || _.isUndefined(siswaDataDocument)) {
+            throw new Api400Error('NIS Invalid', 'Data Siswa Tidak Ditemukan')
+        }
+
+        const dataSiswa = siswaDataDocument.getDataSiswa()
+        return dataSiswa
+    } catch (error) {
+        throw error
+    }
+}
+
+siswaSchema.methods.changeStatus = async function (this: DocumentBaseUserSiswa, status) {
+    try {
+        this.status = status
+        await this.save()
+    } catch (error) {
+        throw error
+    }
+}
 
 siswaSchema.post('validate', async function (): Promise<void> {
-    const { password } = this
-    const hashedPassword = await hash(password)
-    this.password = hashedPassword
+    if (this.isNew || this.isModified('password')) {
+        try {
+            const { password } = this
+            const hashedPassword = await hash(password)
+            this.password = hashedPassword
+        } catch (error) {
+            throw error
+        }
+    }
+})
+
+siswaSchema.pre('save', function () {
+    this.isModified()
 })
 
 const UserSiswaModel = mongoose.model<UserSiswa, UserSiswaModel>('siswaUser', siswaSchema, 'siswa_user')

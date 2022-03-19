@@ -1,77 +1,159 @@
 import express, { Request, Response, NextFunction } from 'express'
 import UserSiswaModel, { UserSiswa } from '../models/userSiswa'
-import siswaAuthMiddleware, { middlewareBodyType, middlewareVarKey } from '../middlewares/siswaAuth'
+import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody, middlewareVarKey } from '../middlewares/siswaAuth'
 import TerlambatModel from '../models/keterlambatan'
-import { compare } from '../helpers/crypto'
-import { createMuridJWT } from '../helpers/jwtManager'
+import Api400Error from '../error/Api400Error'
+import { check, validationResult } from 'express-validator'
+import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
+import createAdminAuthMiddleware from '../middlewares/adminAuth'
+import { accountStatus } from '../helpers/accountEnum'
+import _ from 'lodash'
+import Api404Error from '../error/Api404Error'
+import { Types } from 'mongoose'
 
 const router = express.Router()
 
 // Create UserSiswa
 export default () => {
 
+    {
+        interface IQuery {
+            status?: accountStatus
+        }
+        router.get('/',
+            createAdminAuthMiddleware(),
+            async (req: Request<{}, {}, {}, IQuery>, res: Response, next: NextFunction) => {
+                const { status } = req.query || null
+                const query = {}
+                if (_.isString(status)) {
+                    _.assign(query, status)
+                }
 
-    router.post('/', async (req: Request<{}, {}, Omit<UserSiswa, 'qrcode' | 'status'>>, res: Response, next: NextFunction) => {
+                try {
+                    const siswaDocuments = await UserSiswaModel.find(query)
+                    if (_.isEmpty(siswaDocuments)) throw new Api404Error('Siswa Tidak Ditemukan')
+
+                    return siswaDocuments
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    router.post('/signup', async (req: Request<{}, {}, Omit<UserSiswa, 'qrcode' | 'status'>>, res: Response, next: NextFunction) => {
         const { nis, email, password } = req.body
 
         try {
             const [userSiswaDocument, jwt] = await UserSiswaModel.createSiswaUserAndJwt({ nis, email, password })
-            const publicData = userSiswaDocument.secureData()
-            return res.json({ ...publicData, token: jwt }).status(201)
+            const siswaFullData = await userSiswaDocument.getSiswaFullData()
+            return res.json({ siswaData: siswaFullData, token: jwt }).status(201)
         } catch (error) {
-            console.log(error);
 
             next(error)
         }
     })
 
     {
-        interface BelowBodyType {
+        enum BodyFields {
+            email = 'email',
+            password = 'password'
+        }
+        interface BodyType {
             email: string;
             password: string;
         }
-        router.post('/login', async (req: Request<{}, {}, BelowBodyType>, res: Response) => {
-            if (!req.body.email || !req.body.password) return res.status(400).json({ message: 'Data Tidak Lengkap' })
-            const { email, password: plainPassword } = req.body
-            try {
-                const siswa = await UserSiswaModel.findOneByEmail(email)
-                if (!siswa) return res.status(400).json({ message: 'Email Tidak Ditemukan' })
-                const isVerified = await compare(plainPassword, siswa.password)
-                if (!isVerified) return res.status(401).json({ message: 'Password Salah' })
+        router.post('/signin',
+            check(BodyFields.email)
+                .notEmpty()
+                .withMessage('Email Harus Diisi')
+                .isEmail()
+                .withMessage('Email Tidak Valid'),
+            check(BodyFields.password)
+                .notEmpty()
+                .withMessage('Password Harus Diisi')
+                .isString()
+                .withMessage('Password Harus Berupa Text'),
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
 
-                // Verified, create Jwt
-                const publicData = siswa.secureData()
+                    const { email, password } = req.body
+                    const [UserSiswaDocument, jwt] = await UserSiswaModel.login(email, password)
+                    const publicData = UserSiswaDocument.secureData()
+                    const siswaFullData = await UserSiswaDocument.getSiswaFullData()
 
+                    return res.json({ ...publicData, siswaData: siswaFullData, token: jwt })
 
-                const jwt = await createMuridJWT(JSON.stringify(publicData))
-                return res.json({ token: jwt })
-
-            } catch (error) {
-                console.log(error);
-                return res.status(500).json({ message: 'Server Error' })
+                } catch (error) {
+                    next(error)
+                }
             }
-        })
+        )
     }
 
     {
-        interface BelowBodyType {
-            middleware: {
-                [middlewareVarKey]: middlewareBodyType
-            }
+        enum BodyFields {
+            id = 'id'
         }
-        router.get('/saya', siswaAuthMiddleware, async (req: Request<{}, {}, BelowBodyType>, res: Response) => {
-            const { _id } = req.body.middleware[middlewareVarKey]
+        interface BodyType {
+            id: string
+        }
+        router.put('/aktifasi',
+            createAdminAuthMiddleware(),
+            check(BodyFields.id)
+                .notEmpty()
+                .withMessage('Id Tidak Boleh Kosong')
+                .custom(id => {
+                    const isValid = Types.ObjectId.isValid(id)
+                    if (!isValid) return Promise.reject('Id Tidak Valid')
+                    return true
+                }),
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+
+                    const { id } = req.body
+                    const userSiswaDocument = await UserSiswaModel.findById(id)
+                    if (!userSiswaDocument) throw new Api404Error(`Siswa Dengan Id ${id} Tidak Ditemukan`)
+
+                    await userSiswaDocument.changeStatus(accountStatus.AKTIF)
+                    res.sendStatus(200)
+
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        interface BodyType {
+            middleware: SiswaMiddlewareBody
+        }
+
+
+        router.get('/saya', siswaAuthMiddleware, async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
             try {
-                const siswa = await UserSiswaModel.findById(_id)
-                const keterlambatan = await TerlambatModel.findByNis(siswa.nis)
-                const siswaInformation = Object.assign(siswa.secureData(), { keterlambatan: keterlambatan })
-                return res.json(siswaInformation)
+                const { userSiswaDocument } = req.body.middleware.siswaAuth
+                const getSiswaFullData = userSiswaDocument.getSiswaFullData()
+                const getKeterlambatanDocuments = TerlambatModel.findByNis(userSiswaDocument.nis)
+                const promises = [getSiswaFullData, getKeterlambatanDocuments]
+
+                const results = await Promise.all(promises)
+                const siswaFullData = results[0]
+                const keterlambatanDocuments = results[1]
+                const publicData = userSiswaDocument.secureData()
+
+
+                return res.json({ ...publicData, siswaData: siswaFullData, keterlambatan: keterlambatanDocuments })
             } catch (error) {
-                console.log(error);
-                return res.sendStatus(500)
+                next(error)
             }
         })
     }
+
+
 
 
     return router
