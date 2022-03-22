@@ -1,6 +1,10 @@
 import mongoose, { model, Schema, Types, Model, Document } from 'mongoose'
+import Api401Error from '../error/Api401Error'
+import Api400Error from '../error/Api400Error'
+import Api404Error from '../error/Api404Error'
 import GuruModel from './guru'
 import UserSiswaModel from './userSiswa'
+import Api403Error from '../error/Api403Error'
 
 export interface ITelat {
     idGuru: string,
@@ -12,7 +16,9 @@ export interface ITelat {
 export interface ITelatDocument extends ITelat, Document { }
 
 export interface ITelatModel extends Model<ITelatDocument> {
-    findByNis(nis: string): Promise<ITelatDocument[]>
+    findByNis(nis: string): Promise<ITelatDocument[]>,
+    findByIdAndUpdateAlasan(id: Types.ObjectId, nis: string, alasan: string): Promise<void>,
+    createOne(payload: Omit<ITelat, 'date'>): Promise<ITelatDocument>
 }
 
 export enum KnownError {
@@ -45,6 +51,16 @@ const telatSchema = new Schema<ITelat, {}, {}>({
     }
 })
 
+telatSchema.statics.createOne = async function (this: ITelatModel, payload: Omit<ITelat, 'date'>) {
+    try {
+        const keterlambatanDocument = new this(payload)
+        await keterlambatanDocument.save()
+        return keterlambatanDocument
+    } catch (error) {
+        throw error
+    }
+}
+
 telatSchema.statics.findByNis = async function (this: Model<ITelatDocument>, nis: string) {
     try {
         const keterlambatan = await this.find({ nis: nis })
@@ -54,6 +70,21 @@ telatSchema.statics.findByNis = async function (this: Model<ITelatDocument>, nis
     }
 
 }
+
+telatSchema.statics.findByIdAndUpdateAlasan = async function (this: ITelatModel, id, nis, alasan) {
+    try {
+        const keterlambatanDocument = await this.findOne({ _id: id })
+        if (!keterlambatanDocument) throw new Api404Error(`Keterlambatan dengan Id ${id} Tidak Ditemukan`)
+        if (keterlambatanDocument.nis !== nis) throw new Api403Error('Tidak Memiliki Akses Terhadap Dokumen')
+
+        keterlambatanDocument.alasan = alasan
+        await keterlambatanDocument.save()
+
+    } catch (error) {
+        throw error
+    }
+}
+
 
 telatSchema.pre('validate', async function (next) {
     const { idGuru, nis } = this
@@ -85,4 +116,3 @@ telatSchema.pre('validate', async function (next) {
 
 const TerlambatModel = model<ITelatDocument, ITelatModel>('telat', telatSchema, 'telat')
 export default TerlambatModel
-

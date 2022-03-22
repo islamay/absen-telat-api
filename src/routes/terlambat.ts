@@ -1,38 +1,94 @@
-import express, { Request, Response } from 'express'
+import express, { NextFunction, Request, Response } from 'express'
 import KeterlambatanModel, { ITelat, KnownError } from '../models/keterlambatan'
 import isKnownError from '../helpers/isKnownError'
-import { middlewareBodyType as guruMiddlewareBodyI, middlewareVarKey as guruMiddlewareVarKey } from '../middlewares/guruAuth'
-import guruAuthMiddleware from '../middlewares/guruAuth'
+import guruAuthMiddleware, { middlewareBodyType as GuruMiddlewareBody } from '../middlewares/guruAuth'
+import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody } from '../middlewares/siswaAuth'
+import { check, validationResult } from 'express-validator'
+import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
+import { Types } from 'mongoose'
+import Api400Error from '../error/Api400Error'
+import SiswaModel from '../models/dataSiswa'
 
 const router = express.Router()
 
 const createTerlambatRoutes = () => {
 
     {
-        type BelowBodyType = { middleware: guruMiddlewareBodyI } & Omit<ITelat, 'date' | 'guruId'>;
-        router.post('/', guruAuthMiddleware, async (req: Request<{}, {}, BelowBodyType>, res: Response) => {
-            const { body } = req
+        enum BodyFields {
+            nis = 'nis',
+            alasan = 'nis'
+        }
+        interface BodyType extends Omit<ITelat, 'date' | 'idGuru'> {
+            middleware: GuruMiddlewareBody
+        }
+        router.post('/',
+            guruAuthMiddleware,
+            check(BodyFields.nis)
+                .notEmpty()
+                .withMessage('nis Harus Diisi')
+                .isString()
+                .withMessage('nis Harus Berupa Text')
+                .custom(async (nis) => {
+                    const siswaDocument = await SiswaModel.findOne({ nis })
+                    if (!siswaDocument) return Promise.reject('nis Tidak Valid')
+                    return true
+                })
+            ,
+            check(BodyFields.alasan)
+                .isString()
+                .withMessage('Alasan Harus Berupa Text'),
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
 
+                    const { nis, alasan } = req.body
+                    const { guruDocument } = req.body.middleware.guruAuth
+                    const idGuru = guruDocument._id
+                    const keterlambatanDocument = await KeterlambatanModel.createOne({ idGuru, nis, alasan })
 
-            if (!body.nis) return res.status(400).json({ message: 'Data Tidak Lengkap' })
-
-            const idGuru = body.middleware[guruMiddlewareVarKey].decodedToken._id
-            const { nis } = body
-
-            const terlambat = new KeterlambatanModel({ idGuru, nis })
-
-            try {
-                await terlambat.save()
-                return res.json(terlambat).status(201)
-            } catch (error) {
-
-                if (isKnownError(error.message, KnownError)) return res.status(400).json({ message: error.message })
-                else {
-                    console.log(error);
-                    return res.status(500).json({ message: 'Server Error' })
+                    res.status(201).json(keterlambatanDocument)
+                } catch (error) {
+                    next(error)
                 }
             }
-        })
+        )
+    }
+
+    {
+        enum BodyFields {
+            alasan = 'alasan'
+        }
+        interface BodyType {
+            alasan: string,
+            middleware: SiswaMiddlewareBody
+        }
+        router.put('/:keterlambatanId/alasan',
+            siswaAuthMiddleware,
+            check(BodyFields.alasan)
+                .notEmpty()
+                .withMessage('Alasan Harus Diisi')
+                .isString()
+                .withMessage('Alasan Harus Berupa Text'),
+            async (req: Request<{ keterlambatanId: Types.ObjectId }, {}, BodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+
+                    const { keterlambatanId } = req.params
+                    const { alasan } = req.body
+                    console.log(req.body.middleware);
+
+                    const { userSiswaDocument } = req.body.middleware.siswaAuth
+                    if (!Types.ObjectId.isValid(keterlambatanId)) throw new Api400Error('ValidationError', 'Id Tidak Valid')
+                    await KeterlambatanModel.findByIdAndUpdateAlasan(keterlambatanId, userSiswaDocument.nis, alasan)
+
+                    res.sendStatus(200)
+                } catch (error) {
+                    console.log(error);
+
+                    next(error)
+                }
+            }
+        )
     }
 
 

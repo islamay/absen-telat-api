@@ -10,7 +10,6 @@ import { accountRole, accountStatus } from './accountEnum'
 import SiswaModel from '../models/dataSiswa'
 
 
-
 export enum KnownJwtError {
     InvalidJwt = "Token Invalid"
 }
@@ -30,14 +29,14 @@ export interface siswaJwtPayload extends jwtPayload {
     nis: string,
 }
 
-
+const jwtExpiresIn = '30 days'
 
 export const createGuruJWT = async (guruData: DocumentBaseIGuru) => {
     try {
         const { _id, role, status: accStatus } = guruData
         const accType = accountRole.GURU
         const payload: guruJwtPayload = { _id, accStatus, accType, role }
-        const token = await jsonwebtoken.sign(payload, process.env.GURU_JWT_KEY, { expiresIn: '7days' })
+        const token = await jsonwebtoken.sign(payload, process.env.GURU_JWT_KEY, { expiresIn: jwtExpiresIn })
         return token
     } catch (error) {
         console.log(error);
@@ -52,7 +51,8 @@ export const verifyGuruJwt = async (token: string): Promise<jsonwebtoken.JwtPayl
 
         return (decodedToken as jsonwebtoken.JwtPayload & guruJwtPayload)
     } catch (error) {
-        throw error
+        if (error instanceof JsonWebTokenError) throw new Api401Error(error.message)
+        else throw error
     }
 }
 
@@ -64,7 +64,7 @@ export const createMuridJWT = async (userSiswaDocument: DocumentBaseUserSiswa): 
 
         const { _id, nis } = siswaDocument
         const payload: siswaJwtPayload = { _id, nis, accType: accountRole.SISWA, accStatus: userSiswaDocument.status }
-        const token = await jsonwebtoken.sign(payload, process.env.SISWA_JWT_KEY, { expiresIn: '7days' })
+        const token = await jsonwebtoken.sign(payload, process.env.SISWA_JWT_KEY, { expiresIn: jwtExpiresIn })
         return token
     } catch (error) {
         throw error
@@ -79,6 +79,7 @@ export const verifyMuridJwt = async (token: string): Promise<jsonwebtoken.JwtPay
 
         return (decodedToken as jsonwebtoken.JwtPayload & siswaJwtPayload)
     } catch (error) {
-        throw error
+        if (error instanceof JsonWebTokenError) throw new Api401Error(error.message)
+        else throw error
     }
 }

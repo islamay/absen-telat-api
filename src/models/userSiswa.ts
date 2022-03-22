@@ -101,6 +101,7 @@ siswaSchema.statics.findOneByToken = async function (this: UserSiswaModel, token
     try {
         const userSiswaDocument = await this.findOne({ 'tokens.token': token })
         if (!userSiswaDocument) throw new Api401Error('Token Tidak Valid')
+        return userSiswaDocument
     } catch (error) {
         throw error
     }
