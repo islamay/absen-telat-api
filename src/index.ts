@@ -17,7 +17,7 @@ app.use(express.json())
 app.use('/guru', createGuruRoutes())
 app.use('/user-siswa', createUserSiswaRoutes())
 app.use('/data-siswa', createDataSiswaRoutes())
-app.use('/terlambat', createTerlambatRoutes())
+app.use('/keterlambatan', createTerlambatRoutes())
 app.use(errorHandlerMiddleware())
 
 

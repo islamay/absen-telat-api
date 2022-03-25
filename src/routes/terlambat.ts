@@ -4,6 +4,7 @@ import isKnownError from '../helpers/isKnownError'
 import guruAuthMiddleware, { middlewareBodyType as GuruMiddlewareBody } from '../middlewares/guruAuth'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody } from '../middlewares/siswaAuth'
 import { check, validationResult } from 'express-validator'
+import { query } from 'express-validator/check'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
 import { Types } from 'mongoose'
 import Api400Error from '../error/Api400Error'
@@ -12,6 +13,39 @@ import SiswaModel from '../models/dataSiswa'
 const router = express.Router()
 
 const createTerlambatRoutes = () => {
+
+    {
+
+        interface QueryParam {
+            date: Date
+        }
+        router.get('/',
+            guruAuthMiddleware,
+            query('date')
+                .isDate()
+                .withMessage('Tanggal Tidak Valid'),
+            async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
+                try {
+                    const date = req.query.date
+                    let keterlambatanDocuments;
+
+                    if (date) {
+                        keterlambatanDocuments = await KeterlambatanModel.find({})
+                    } else {
+                        keterlambatanDocuments = await KeterlambatanModel.find({})
+                    }
+
+                    return res.json(keterlambatanDocuments)
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        router.get('/siswa/:idSiswa')
+    }
 
     {
         enum BodyFields {
