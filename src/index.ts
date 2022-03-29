@@ -3,7 +3,6 @@ import express, { Request, Response } from 'express'
 import cors from 'cors'
 import morgan from 'morgan'
 import { exit } from 'process'
-import createConnection from './helpers/db'
 import createGuruRoutes from './routes/guru'
 import createUserSiswaRoutes from './routes/userSiswa'
 import createDataSiswaRoutes from './routes/dataSiswa'
@@ -21,20 +20,4 @@ app.use('/keterlambatan', createTerlambatRoutes())
 app.use(errorHandlerMiddleware())
 
 
-const port = 5000
-const main = async () => {
-    try {
-
-        const connection = await createConnection(process.env.DB_URI)
-        console.log('Success Connecting To \'Main\' Database 1/1');
-
-
-        app.listen(port, () => console.log(`Running on port ${port} | http://localhost:${port}`))
-    } catch (error) {
-        console.log(error);
-        console.log(error.message);
-        exit()
-    }
-}
-
-main()
+export default app

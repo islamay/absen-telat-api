@@ -4,11 +4,12 @@ import isKnownError from '../helpers/isKnownError'
 import guruAuthMiddleware, { middlewareBodyType as GuruMiddlewareBody } from '../middlewares/guruAuth'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody } from '../middlewares/siswaAuth'
 import { check, validationResult } from 'express-validator'
-import { query } from 'express-validator/check'
+import { query } from 'express-validator'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
 import { Types } from 'mongoose'
 import Api400Error from '../error/Api400Error'
 import SiswaModel from '../models/dataSiswa'
+
 
 const router = express.Router()
 
@@ -119,6 +120,37 @@ const createTerlambatRoutes = () => {
                 } catch (error) {
                     console.log(error);
 
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        interface QueryParam {
+            start: string,
+            end?: string
+        }
+
+        router.get('/download',
+            query('start')
+                .notEmpty()
+                .withMessage('Parameter \'start\' Tidak Boleh Kosong')
+                .isISO8601()
+                .withMessage('Parameter tidak valid'),
+            async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+
+                    const { start, end } = req.query
+                    const startDate = new Date(start)
+                    const endDate = end ? new Date(end) : new Date()
+
+                    const keterlambatanDocuments = await KeterlambatanModel.findByDate(startDate, endDate)
+
+                    res.json(keterlambatanDocuments)
+
+                } catch (error) {
                     next(error)
                 }
             }

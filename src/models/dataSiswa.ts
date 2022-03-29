@@ -105,9 +105,7 @@ siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<
     } catch (err) {
         console.log(err);
 
-        if (err instanceof mongoose.Error) {
 
-        }
     }
 }
 

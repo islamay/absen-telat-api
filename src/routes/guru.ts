@@ -45,7 +45,7 @@ const createRoutes = () => {
             password = 'password'
         }
         type BodyType = IGuruAsParam;
-        router.post('/signup', adminAuthMiddleware,
+        router.post('/', adminAuthMiddleware,
             check(bodyEnum.namaLengkap)
                 .notEmpty()
                 .withMessage('Nama Lengkap Harus Diisi')

@@ -5,6 +5,7 @@ import Api404Error from '../error/Api404Error'
 import GuruModel from './guru'
 import UserSiswaModel from './userSiswa'
 import Api403Error from '../error/Api403Error'
+import { DocumentBaseDataSiswa } from './dataSiswa'
 
 export interface ITelat {
     idGuru: string,
@@ -16,6 +17,7 @@ export interface ITelat {
 export interface ITelatDocument extends ITelat, Document { }
 
 export interface ITelatModel extends Model<ITelatDocument> {
+    findByDate(start: Date, end: Date): Promise<ITelatDocument[]>,
     findByNis(nis: string): Promise<ITelatDocument[]>,
     findByIdAndUpdateAlasan(id: Types.ObjectId, nis: string, alasan: string): Promise<void>,
     createOne(payload: Omit<ITelat, 'date'>): Promise<ITelatDocument>
@@ -49,7 +51,10 @@ const telatSchema = new Schema<ITelat, {}, {}>({
             return date
         }
     }
-})
+},
+    {
+        toObject: { virtuals: true }
+    })
 
 telatSchema.statics.createOne = async function (this: ITelatModel, payload: Omit<ITelat, 'date'>) {
     try {
@@ -71,6 +76,22 @@ telatSchema.statics.findByNis = async function (this: Model<ITelatDocument>, nis
 
 }
 
+telatSchema.statics.findByDate = async function (this: ITelatModel, start: Date, end: Date) {
+    try {
+        const keterlambatanDocuments = await this.find({
+            date: {
+                $gte: start,
+                $lte: end
+            }
+        })
+
+
+        return keterlambatanDocuments
+    } catch (error) {
+        throw error
+    }
+}
+
 telatSchema.statics.findByIdAndUpdateAlasan = async function (this: ITelatModel, id, nis, alasan) {
     try {
         const keterlambatanDocument = await this.findOne({ _id: id })
@@ -84,6 +105,8 @@ telatSchema.statics.findByIdAndUpdateAlasan = async function (this: ITelatModel,
         throw error
     }
 }
+
+
 
 
 telatSchema.pre('validate', async function (next) {
@@ -112,6 +135,13 @@ telatSchema.pre('validate', async function (next) {
     } catch (error) {
         return next(error)
     }
+})
+
+telatSchema.virtual('siswa', {
+    ref: 'siswa',
+    localField: 'nis',
+    foreignField: 'nis',
+    justOne: true
 })
 
 const TerlambatModel = model<ITelatDocument, ITelatModel>('telat', telatSchema, 'telat')
