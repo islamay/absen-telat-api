@@ -13,7 +13,7 @@ const createErrorMiddleware = () => {
             res.status(err.statusCode)
             res.json(err.getFormattedError())
         } else {
-            console.log(err);
+            console.log(err.message);
 
             return res.sendStatus(500)
         }

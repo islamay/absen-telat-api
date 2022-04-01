@@ -1,21 +1,25 @@
-import mongoose, { model, Schema, Types, Model, Document } from 'mongoose'
+import mongoose, { model, Schema, Types, Model, Document, PopulatedDoc } from 'mongoose'
 import Api401Error from '../error/Api401Error'
 import Api400Error from '../error/Api400Error'
 import Api404Error from '../error/Api404Error'
 import GuruModel from './guru'
 import UserSiswaModel from './userSiswa'
 import Api403Error from '../error/Api403Error'
-import { DocumentBaseDataSiswa } from './dataSiswa'
+import SiswaModel, { DocumentBaseDataSiswa } from './dataSiswa'
 
 export interface ITelat {
     idGuru: string,
     nis: string,
     alasan: string
-    date: Date,
+    date: Date
 }
+
 
 export interface ITelatDocument extends ITelat, Document { }
 
+export interface PopulatedKeterlambatan extends ITelatDocument {
+    siswa: UserSiswaModel
+}
 export interface ITelatModel extends Model<ITelatDocument> {
     findByDate(start: Date, end: Date): Promise<ITelatDocument[]>,
     findByNis(nis: string): Promise<ITelatDocument[]>,
@@ -83,8 +87,7 @@ telatSchema.statics.findByDate = async function (this: ITelatModel, start: Date,
                 $gte: start,
                 $lte: end
             }
-        })
-
+        }).populate<{ siswa: DocumentBaseDataSiswa }>('siswa')
 
         return keterlambatanDocuments
     } catch (error) {
@@ -109,33 +112,6 @@ telatSchema.statics.findByIdAndUpdateAlasan = async function (this: ITelatModel,
 
 
 
-telatSchema.pre('validate', async function (next) {
-    const { idGuru, nis } = this
-
-
-    if (!Types.ObjectId.isValid(idGuru)) {
-        const error = new Error(KnownError.InvalidGuruId)
-        return next(error)
-    }
-
-    try {
-        const guruExist = await GuruModel.findOne({ _id: idGuru })
-        if (!guruExist) {
-            const error = new Error(KnownError.InvalidGuruId)
-            return next(error)
-        }
-
-        const siswaExist = await UserSiswaModel.findOne({ nis: nis })
-        if (!siswaExist) {
-            const error = new Error(KnownError.InvalidSiswaNis)
-            return next(error)
-        }
-
-        return next()
-    } catch (error) {
-        return next(error)
-    }
-})
 
 telatSchema.virtual('siswa', {
     ref: 'siswa',

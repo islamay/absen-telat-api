@@ -110,11 +110,11 @@ siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<
 }
 
 siswaSchema.methods.getFullClass = function (this: DataSiswa) {
-    if (this.kelasNo === Kelas.X) {
-        const fullClass = `${this.kelasString} - ${this.jurusan}`
+    if (this.kelasNo === 1) {
+        const fullClass = `${this.kelasString} ${this.jurusan}`
         return fullClass
     } else {
-        const fullClass = `${this.kelasString} - ${this.jurusan} ${this.kelasNo}`
+        const fullClass = `${this.kelasString} ${this.jurusan} ${this.kelasNo}`
         return fullClass
     }
 }

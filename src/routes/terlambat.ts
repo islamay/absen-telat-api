@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express'
-import KeterlambatanModel, { ITelat, KnownError } from '../models/keterlambatan'
+import KeterlambatanModel, { ITelat, KnownError, PopulatedKeterlambatan } from '../models/keterlambatan'
 import isKnownError from '../helpers/isKnownError'
 import guruAuthMiddleware, { middlewareBodyType as GuruMiddlewareBody } from '../middlewares/guruAuth'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody } from '../middlewares/siswaAuth'
@@ -8,8 +8,9 @@ import { query } from 'express-validator'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
 import { Types } from 'mongoose'
 import Api400Error from '../error/Api400Error'
-import SiswaModel from '../models/dataSiswa'
-
+import SiswaModel, { DocumentBaseDataSiswa } from '../models/dataSiswa'
+import convertToExcel from '../helpers/keterlambatanExcel'
+import { Stream } from 'stream'
 
 const router = express.Router()
 
@@ -66,6 +67,7 @@ const createTerlambatRoutes = () => {
                 .custom(async (nis) => {
                     const siswaDocument = await SiswaModel.findOne({ nis })
                     if (!siswaDocument) return Promise.reject('nis Tidak Valid')
+                    console.log(!siswaDocument);
                     return true
                 })
             ,
@@ -83,6 +85,8 @@ const createTerlambatRoutes = () => {
 
                     res.status(201).json(keterlambatanDocument)
                 } catch (error) {
+                    console.log(error);
+
                     next(error)
                 }
             }
@@ -148,8 +152,14 @@ const createTerlambatRoutes = () => {
 
                     const keterlambatanDocuments = await KeterlambatanModel.findByDate(startDate, endDate)
 
-                    res.json(keterlambatanDocuments)
+                    const fileBuffer = await convertToExcel(keterlambatanDocuments)
 
+                    res.set('Content-disposition', 'attachment; filename=' + 'data-keterlambatan.xlsx')
+                    res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+                    const readStream = new Stream.PassThrough()
+                    readStream.end(fileBuffer, 'base64')
+                    readStream.pipe(res)
                 } catch (error) {
                     next(error)
                 }
