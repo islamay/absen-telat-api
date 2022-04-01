@@ -170,8 +170,8 @@ guruSchema.methods.removeToken = async function (this: DocumentBaseIGuru, givenT
 }
 
 guruSchema.methods.secureData = function (this: DocumentBaseIGuru) {
-    const { email, namaLengkap, role, status } = this
-    return { email, namaLengkap, role, status }
+    const { email, namaLengkap, role, status, _id } = this
+    return { email, namaLengkap, role, status, _id }
 }
 
 guruSchema.post('validate', async function () {

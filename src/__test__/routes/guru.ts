@@ -35,3 +35,16 @@ export const loginTests = [
         statusCode: 400
     }
 ]
+
+export const signUpTests = (token: string) => {
+
+    return [
+        {
+            it: 'Should Create \'Guru\' Account',
+            body: {
+                namaLengkap: 'Muhammad Ilham',
+
+            }
+        }
+    ]
+}
