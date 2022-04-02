@@ -33,7 +33,7 @@ const createRoutes = () => {
     }
 
     {
-        type ReqBody = Omit<DataSiswa, 'kelasString'>;
+        type ReqBody = Omit<DataSiswa, 'kelasString' | 'fullClass'>;
         router.post('/',
             createAdminAuthMiddleware(),
             async (req: Request<{}, {}, ReqBody>, res: Response, next: NextFunction) => {

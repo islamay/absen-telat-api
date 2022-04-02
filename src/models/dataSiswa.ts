@@ -30,7 +30,8 @@ export interface DataSiswa {
     kelas: number,
     kelasString: kelasString,
     kelasNo: number,
-    jurusan: Jurusan
+    jurusan: Jurusan,
+    fullClass: string
 }
 
 
@@ -43,7 +44,7 @@ export interface DataSiswaMethods {
 export type DocumentBaseDataSiswa = Document & DataSiswa & DataSiswaMethods;
 
 export interface SiswaModel extends Model<DataSiswa, {}, DataSiswaMethods> {
-    createSiswa: (siswa: Omit<DataSiswa, 'kelasString'>) => Promise<DocumentBaseDataSiswa>,
+    createSiswa: (siswa: Omit<DataSiswa, 'kelasString' | 'fullClass'>) => Promise<DocumentBaseDataSiswa>,
     findSiswaByNis: (nis: string) => Promise<DocumentBaseDataSiswa>
     findSiswaByName: (name: string) => Promise<DocumentBaseDataSiswa[]>
 }
@@ -81,7 +82,7 @@ const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
         type: String,
         enum: kelasString,
         required: true,
-        default: function (this: DataSiswa) {
+        default: function (this: DocumentBaseDataSiswa) {
             return generateKelasString(this.kelas)
         }
     },
@@ -93,10 +94,23 @@ const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
         type: String,
         required: [true, 'Jurusan Harus Diisi'],
         enum: { values: enumValues(Jurusan), message: 'Jurusan Tidak Valid' }
+    },
+    fullClass: {
+        type: String,
+        required: true,
+        default: function (this: DocumentBaseDataSiswa) {
+            if (this.kelasNo === 1) {
+                const fullClass = `${this.kelasString} ${this.jurusan}`
+                return fullClass
+            } else {
+                const fullClass = `${this.kelasString} ${this.jurusan} ${this.kelasNo}`
+                return fullClass
+            }
+        }
     }
 })
 
-siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<DataSiswa, 'kelasString'>) {
+siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<DataSiswa, 'kelasString' | 'fullClass'>) {
     const { nis, namaLengkap, kelas, kelasNo, jurusan } = siswa || null
 
     try {
@@ -136,7 +150,8 @@ siswaSchema.methods.getDataSiswa = function (this: DocumentBaseDataSiswa) {
         kelas: this.kelas,
         kelasNo: this.kelasNo,
         kelasString: this.kelasString,
-        jurusan: this.jurusan
+        jurusan: this.jurusan,
+        fullClass: this.fullClass
     }
 
     return dataSiswaObject
