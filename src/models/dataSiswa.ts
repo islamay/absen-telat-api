@@ -45,6 +45,7 @@ export type DocumentBaseDataSiswa = Document & DataSiswa & DataSiswaMethods;
 export interface SiswaModel extends Model<DataSiswa, {}, DataSiswaMethods> {
     createSiswa: (siswa: Omit<DataSiswa, 'kelasString'>) => Promise<DocumentBaseDataSiswa>,
     findSiswaByNis: (nis: string) => Promise<DocumentBaseDataSiswa>
+    findSiswaByName: (name: string) => Promise<DocumentBaseDataSiswa[]>
 }
 
 const generateKelasString = function (kelas: Kelas) {
@@ -106,6 +107,15 @@ siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<
         console.log(err);
 
 
+    }
+}
+
+siswaSchema.statics.findSiswaByName = async function (this: SiswaModel, name: string) {
+    try {
+        const siswaDocuments = await this.find({ namaLengkap: { $regex: name, $options: 'i' } })
+        return siswaDocuments
+    } catch (error) {
+        throw error
     }
 }
 
