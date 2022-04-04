@@ -3,7 +3,7 @@ import UserSiswaModel, { UserSiswa } from '../models/userSiswa'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody, middlewareVarKey } from '../middlewares/siswaAuth'
 import TerlambatModel from '../models/keterlambatan'
 import Api400Error from '../error/Api400Error'
-import { check, validationResult } from 'express-validator'
+import { check, validationResult, query } from 'express-validator'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
 import createAdminAuthMiddleware from '../middlewares/adminAuth'
 import { accountStatus } from '../helpers/accountEnum'
@@ -18,22 +18,28 @@ export default () => {
 
     {
         interface IQuery {
-            status?: accountStatus
+            status?: accountStatus,
+            nama: string
         }
         router.get('/',
             createAdminAuthMiddleware(),
+            query('nama')
+                .isString()
+                .withMessage('Nama harus berupa text'),
             async (req: Request<{}, {}, {}, IQuery>, res: Response, next: NextFunction) => {
-                const { status } = req.query || null
+                const { status, nama } = req.query || null
                 const query = {}
                 if (_.isString(status)) {
                     _.assign(query, status)
                 }
 
-                try {
-                    const siswaDocuments = await UserSiswaModel.find(query)
-                    if (_.isEmpty(siswaDocuments)) throw new Api404Error('Siswa Tidak Ditemukan')
+                if (_.isString(nama)) {
+                    _.assign(query, nama)
+                }
 
-                    return siswaDocuments
+                try {
+                    const siswaDocuments = await UserSiswaModel.find(query, ['-password', '-tokens']).populate('siswa').lean()
+                    res.json(siswaDocuments)
                 } catch (error) {
                     next(error)
                 }

@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express'
-import KeterlambatanModel, { ITelat, KnownError, PopulatedKeterlambatan } from '../models/keterlambatan'
+import KeterlambatanModel, { ITelat, KnownError } from '../models/keterlambatan'
 import isKnownError from '../helpers/isKnownError'
 import guruAuthMiddleware, { middlewareBodyType as GuruMiddlewareBody } from '../middlewares/guruAuth'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody } from '../middlewares/siswaAuth'
@@ -32,12 +32,14 @@ const createTerlambatRoutes = () => {
                     let keterlambatanDocuments;
 
                     if (date) {
-                        keterlambatanDocuments = await KeterlambatanModel.find({})
+                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate('siswa')
+
                     } else {
-                        keterlambatanDocuments = await KeterlambatanModel.find({})
+                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate<{ siswa: DocumentBaseDataSiswa }>('siswa').lean()
                     }
 
-                    return res.json(keterlambatanDocuments)
+                    res.json(keterlambatanDocuments)
+
                 } catch (error) {
                     next(error)
                 }
@@ -67,7 +69,6 @@ const createTerlambatRoutes = () => {
                 .custom(async (nis) => {
                     const siswaDocument = await SiswaModel.findOne({ nis })
                     if (!siswaDocument) return Promise.reject('nis Tidak Valid')
-                    console.log(!siswaDocument);
                     return true
                 })
             ,
@@ -114,7 +115,6 @@ const createTerlambatRoutes = () => {
 
                     const { keterlambatanId } = req.params
                     const { alasan } = req.body
-                    console.log(req.body.middleware);
 
                     const { userSiswaDocument } = req.body.middleware.siswaAuth
                     if (!Types.ObjectId.isValid(keterlambatanId)) throw new Api400Error('ValidationError', 'Id Tidak Valid')

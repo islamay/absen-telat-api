@@ -165,6 +165,13 @@ siswaSchema.post('validate', async function (): Promise<void> {
     }
 })
 
+siswaSchema.virtual('siswa', {
+    ref: 'siswa',
+    foreignField: 'nis',
+    localField: 'nis',
+    justOne: true
+})
+
 siswaSchema.pre('save', function () {
     this.isModified()
 })
