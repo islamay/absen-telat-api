@@ -42,7 +42,7 @@ export const jurusanValidationErrorMessage = {
     'any.only': anyOnly('Jurusan')
 }
 
-const SiswaDataSchema = Joi.object<Omit<DataSiswa, 'kelasString'>>({
+const SiswaDataSchema = Joi.object<Omit<DataSiswa, 'kelasString' | 'fullClass'>>({
     nis: Joi.string()
         .alphanum()
         .max(25)
@@ -72,7 +72,7 @@ const SiswaDataSchema = Joi.object<Omit<DataSiswa, 'kelasString'>>({
 
 
 
-const validateDataSiswa = async (dataSiswa: Omit<DataSiswa, 'kelasString'>) => {
+const validateDataSiswa = async (dataSiswa: Omit<DataSiswa, 'kelasString' | 'fullClass'>) => {
 
     const { nis, namaLengkap, kelas, kelasNo, jurusan } = dataSiswa || null
 

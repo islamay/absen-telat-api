@@ -14,14 +14,13 @@ export interface ITelat {
     date: Date
 }
 
-
 export interface ITelatDocument extends ITelat, Document { }
 
 export interface PopulatedKeterlambatan extends ITelatDocument {
     siswa: UserSiswaModel
 }
 export interface ITelatModel extends Model<ITelatDocument> {
-    findByDate(start: Date, end: Date): Promise<ITelatDocument[]>,
+    findByDate(start: Date, end?: Date): Promise<ITelatDocument[]>,
     findByNis(nis: string): Promise<ITelatDocument[]>,
     findByIdAndUpdateAlasan(id: Types.ObjectId, nis: string, alasan: string): Promise<void>,
     createOne(payload: Omit<ITelat, 'date'>): Promise<ITelatDocument>
@@ -72,7 +71,8 @@ telatSchema.statics.createOne = async function (this: ITelatModel, payload: Omit
 
 telatSchema.statics.findByNis = async function (this: Model<ITelatDocument>, nis: string) {
     try {
-        const keterlambatan = await this.find({ nis: nis })
+        const keterlambatan = await this.find({ nis: nis }).populate('siswa')
+
         return keterlambatan
     } catch (error) {
         return []
