@@ -10,6 +10,7 @@ import { accountStatus } from '../helpers/accountEnum'
 import _ from 'lodash'
 import Api404Error from '../error/Api404Error'
 import { Types } from 'mongoose'
+import SiswaModel from '../models/dataSiswa'
 
 const router = express.Router()
 
@@ -27,19 +28,13 @@ export default () => {
                 .isString()
                 .withMessage('Nama harus berupa text'),
             async (req: Request<{}, {}, {}, IQuery>, res: Response, next: NextFunction) => {
-                const { status, nama } = req.query || null
-                const query = {}
-                if (_.isString(status)) {
-                    _.assign(query, status)
-                }
-
-                if (_.isString(nama)) {
-                    _.assign(query, nama)
-                }
+                const { nama = null } = req.query
 
                 try {
-                    const siswaDocuments = await UserSiswaModel.find(query, ['-password', '-tokens']).populate('siswa').lean()
-                    res.json(siswaDocuments)
+                    const siswaDocuments = await SiswaModel.findSiswaByName(nama)
+                    const nisses = siswaDocuments.map((siswa) => siswa.nis)
+                    const userSiswaDocuments = await UserSiswaModel.find({ nis: { $in: nisses } }, ['-password', '-tokens']).populate('siswa').lean()
+                    res.json(userSiswaDocuments)
                 } catch (error) {
                     next(error)
                 }
@@ -53,7 +48,7 @@ export default () => {
         try {
             const [userSiswaDocument, jwt] = await UserSiswaModel.createSiswaUserAndJwt({ nis, email, password })
             const siswaFullData = await userSiswaDocument.getSiswaFullData()
-            return res.json({ siswaData: siswaFullData, token: jwt }).status(201)
+            return res.json({ ...siswaFullData, token: jwt }).status(201)
         } catch (error) {
 
             next(error)
@@ -89,7 +84,7 @@ export default () => {
                     const publicData = UserSiswaDocument.secureData()
                     const siswaFullData = await UserSiswaDocument.getSiswaFullData()
 
-                    return res.json({ ...publicData, siswaData: siswaFullData, token: jwt })
+                    return res.json({ ...publicData, ...siswaFullData, token: jwt })
 
                 } catch (error) {
                     next(error)

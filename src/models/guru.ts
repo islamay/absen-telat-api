@@ -39,6 +39,7 @@ export type DocumentBaseIGuru = Document & IGuru & IGuruMethods
 
 export interface IGuruModel extends Model<IGuru, {}, IGuruMethods> {
     findByEmail(email: string): DocumentBaseIGuru;
+    createGuru(guru: IGuruAsParam): Promise<DocumentBaseIGuru>
     createGuruAndJwt(guru: IGuruAsParam): Promise<[DocumentBaseIGuru, string]>;
     login(email: string, password: string): Promise<[DocumentBaseIGuru, string]>;
     findOneByToken(token: string): Promise<DocumentBaseIGuru>;
@@ -80,6 +81,18 @@ const guruSchema = new Schema<IGuru, {}, IGuruMethods>({
         }
     }]
 })
+
+guruSchema.statics.createGuru = async function (this: IGuruModel, guru: IGuruAsParam): Promise<DocumentBaseIGuru> {
+    try {
+        const { namaLengkap, email, password } = guru
+        const guruDocument = new this({ namaLengkap, email, password })
+        await guruDocument.save()
+        return guruDocument
+
+    } catch (error) {
+        throw error
+    }
+}
 
 guruSchema.statics.createGuruAndJwt = async function (this: IGuruModel, guru: IGuruAsParam): Promise<[DocumentBaseIGuru, string]> {
     const { namaLengkap, email, password } = guru

@@ -19,27 +19,22 @@ const createTerlambatRoutes = () => {
     {
 
         interface QueryParam {
-            date: Date
+            nama: string,
         }
         router.get('/',
             guruAuthMiddleware,
-            query('date')
-                .isDate()
-                .withMessage('Tanggal Tidak Valid'),
+            query('nama')
+                .isString()
+                .withMessage('Nama Tidak Valid'),
             async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
                 try {
-                    const date = req.query.date
-                    let keterlambatanDocuments;
+                    const { nama = '' } = req.query
 
-                    if (date) {
-                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate('siswa')
-
-                    } else {
-                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate<{ siswa: DocumentBaseDataSiswa }>('siswa').lean()
-                    }
+                    const siswaDocuments = await SiswaModel.find({ namaLengkap: { $regex: nama, $options: 'i' } })
+                    const nisses = siswaDocuments.map(siswa => siswa.nis)
+                    const keterlambatanDocuments = await KeterlambatanModel.find({ nis: { $in: nisses } }).populate('siswa').lean()
 
                     res.json(keterlambatanDocuments)
-
                 } catch (error) {
                     next(error)
                 }

@@ -5,6 +5,10 @@ import { query, validationResult } from 'express-validator'
 import validateDataSiswa from '../validation/dataSiswa'
 import _ from 'lodash'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
+import siswaAuthMiddleware, { middlewareBodyType as siswaAuthMiddlewareBodyType } from '../middlewares/siswaAuth'
+import Api401Error from '../error/Api401Error'
+import TerlambatModel from '../models/keterlambatan'
+
 
 const router = express.Router()
 
@@ -24,6 +28,28 @@ const createRoutes = () => {
                     const { name = '' } = req.query
                     const siswaDocuments = await DataSiswaModel.findSiswaByName(name)
                     res.json(siswaDocuments)
+
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        interface Body {
+            middleware: siswaAuthMiddlewareBodyType
+        }
+        router.get('/:nis/keterlambatan',
+            siswaAuthMiddleware,
+            async (req: Request<{ nis: string }, {}, Body>, res: Response, next) => {
+                try {
+                    if (req.body.middleware.siswaAuth.userSiswaDocument.nis !== req.params.nis) {
+                        throw new Api401Error('Unauthorized')
+                    }
+
+                    const terlambatDocuments = await TerlambatModel.find({ nis: req.params.nis }).populate('siswa').lean()
+                    res.json(terlambatDocuments)
 
                 } catch (error) {
                     next(error)
