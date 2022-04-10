@@ -92,8 +92,7 @@ siswaSchema.statics.findOneByEmail = async function (this: UserSiswaModel, email
         return siswa
 
     } catch (error) {
-        console.log(error);
-        throw new Api500Error()
+        throw error
     }
 }
 
