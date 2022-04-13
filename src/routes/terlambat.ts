@@ -136,7 +136,11 @@ const createTerlambatRoutes = () => {
                 .notEmpty()
                 .withMessage('Parameter \'start\' Tidak Boleh Kosong')
                 .isISO8601()
-                .withMessage('Parameter tidak valid'),
+                .withMessage('Parameter \'start\' tidak valid'),
+            query('end')
+                .optional({ checkFalsy: true })
+                .isISO8601()
+                .withMessage('Parameter \'end\' tidak valid'),
             async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
                 try {
                     handleExpressValidatorError(validationResult(req))
@@ -146,11 +150,14 @@ const createTerlambatRoutes = () => {
                     const endDate = end ? new Date(end) : new Date()
 
                     const keterlambatanDocuments = await KeterlambatanModel.findByDate(startDate, endDate)
+                    console.log(keterlambatanDocuments);
 
                     const fileBuffer = await convertToExcel(keterlambatanDocuments)
+                    const fileSize = Buffer.from(fileBuffer).length
 
                     res.set('Content-disposition', 'attachment; filename=' + 'data-keterlambatan.xlsx')
                     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    res.set('Content-Length', fileSize.toString())
 
                     const readStream = new Stream.PassThrough()
                     readStream.end(fileBuffer, 'base64')
