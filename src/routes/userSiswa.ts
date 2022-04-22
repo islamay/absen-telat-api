@@ -3,7 +3,7 @@ import UserSiswaModel, { UserSiswa } from '../models/userSiswa'
 import siswaAuthMiddleware, { middlewareBodyType as SiswaMiddlewareBody, middlewareVarKey } from '../middlewares/siswaAuth'
 import TerlambatModel from '../models/keterlambatan'
 import Api400Error from '../error/Api400Error'
-import { check, validationResult, query } from 'express-validator'
+import { check, validationResult, query, body, header } from 'express-validator'
 import handleExpressValidatorError from '../helpers/handleExpressValidatorError'
 import createAdminAuthMiddleware from '../middlewares/adminAuth'
 import { accountStatus } from '../helpers/accountEnum'
@@ -11,36 +11,25 @@ import _ from 'lodash'
 import Api404Error from '../error/Api404Error'
 import { Types } from 'mongoose'
 import SiswaModel from '../models/dataSiswa'
+import requestChangePassword from '../controllers/userSiswa/requestChangePassword'
+import verifyChangePassword from '../controllers/userSiswa/verifyChangePassword'
+import changePassword from '../controllers/userSiswa/changePassword'
+import validatePayload from '../middlewares/validatePayload'
+import getUserSiswa from '../controllers/userSiswa/get'
 
 const router = express.Router()
 
 // Create UserSiswa
 export default () => {
 
-    {
-        interface IQuery {
-            status?: accountStatus,
-            nama: string
-        }
-        router.get('/',
-            createAdminAuthMiddleware(),
-            query('nama')
-                .isString()
-                .withMessage('Nama harus berupa text'),
-            async (req: Request<{}, {}, {}, IQuery>, res: Response, next: NextFunction) => {
-                const { nama = null } = req.query
-
-                try {
-                    const siswaDocuments = await SiswaModel.findSiswaByName(nama)
-                    const nisses = siswaDocuments.map((siswa) => siswa.nis)
-                    const userSiswaDocuments = await UserSiswaModel.find({ nis: { $in: nisses } }, ['-password', '-tokens']).populate('siswa').lean()
-                    res.json(userSiswaDocuments)
-                } catch (error) {
-                    next(error)
-                }
-            }
-        )
-    }
+    router.get('/',
+        createAdminAuthMiddleware(),
+        query('nama')
+            .isString()
+            .withMessage('Nama harus berupa text'),
+        validatePayload,
+        getUserSiswa()
+    )
 
     router.post('/signup', async (req: Request<{}, {}, Omit<UserSiswa, 'qrcode' | 'status'>>, res: Response, next: NextFunction) => {
         const { nis, email, password } = req.body
@@ -155,7 +144,55 @@ export default () => {
     }
 
 
+    router.post('/request-change-password',
+        check('email')
+            .notEmpty()
+            .withMessage('Email tidak boleh kosong')
+            .isEmail()
+            .withMessage('Email tidak valid'),
+        requestChangePassword
+    )
 
+    router.post('/verify-change-password',
+        check('pass')
+            .notEmpty()
+            .withMessage('Kode verifikasi tidak boleh kosong')
+            .isString()
+            .withMessage('Kode verifikasi harus berupa text'),
+        check('email')
+            .notEmpty()
+            .withMessage('Email tidak boleh kosong')
+            .isEmail()
+            .withMessage('Email tidak valid'),
+        verifyChangePassword
+    )
+
+    const siswaSuperAuth = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            handleExpressValidatorError(validationResult(req))
+            const token = req.headers.authorization.split(' ')[1]
+            if (!token) return res.sendStatus(401)
+
+            const studentAccountDocument = await UserSiswaModel.findOne({ superToken: token })
+            if (!studentAccountDocument) return res.sendStatus(401)
+
+            req.body.studentAccountDocument = studentAccountDocument
+
+            next()
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    router.put('/change-password',
+        siswaSuperAuth,
+        body('password')
+            .notEmpty()
+            .withMessage('Password tidak boleh kosong')
+            .isString()
+            .withMessage('Password harus berupa text'),
+        changePassword
+    )
 
     return router
 }

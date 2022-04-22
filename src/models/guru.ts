@@ -1,7 +1,6 @@
 import { model, Schema, Document, Model } from 'mongoose'
 import { hash } from '../helpers/crypto'
 import { accountStatus } from '../helpers/accountEnum';
-import validateGuru from '../validation/guru';
 import { createGuruJWT } from '../helpers/jwtManager';
 import { compare } from '../helpers/crypto'
 import Api404Error from '../error/Api404Error';
@@ -97,7 +96,6 @@ guruSchema.statics.createGuru = async function (this: IGuruModel, guru: IGuruAsP
 guruSchema.statics.createGuruAndJwt = async function (this: IGuruModel, guru: IGuruAsParam): Promise<[DocumentBaseIGuru, string]> {
     const { namaLengkap, email, password } = guru
     try {
-        await validateGuru({ namaLengkap, email, password })
         const guruDocument = new this({ namaLengkap, email, password })
 
         const savingDocument = guruDocument.save()
