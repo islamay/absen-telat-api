@@ -19,27 +19,22 @@ const createTerlambatRoutes = () => {
     {
 
         interface QueryParam {
-            date: Date
+            nama: string,
         }
         router.get('/',
             guruAuthMiddleware,
-            query('date')
-                .isDate()
-                .withMessage('Tanggal Tidak Valid'),
+            query('nama')
+                .isString()
+                .withMessage('Nama Tidak Valid'),
             async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
                 try {
-                    const date = req.query.date
-                    let keterlambatanDocuments;
+                    const { nama = '' } = req.query
 
-                    if (date) {
-                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate('siswa')
-
-                    } else {
-                        keterlambatanDocuments = await KeterlambatanModel.find({}).populate<{ siswa: DocumentBaseDataSiswa }>('siswa').lean()
-                    }
+                    const siswaDocuments = await SiswaModel.find({ namaLengkap: { $regex: nama, $options: 'i' } })
+                    const nisses = siswaDocuments.map(siswa => siswa.nis)
+                    const keterlambatanDocuments = await KeterlambatanModel.find({ nis: { $in: nisses } }).populate('siswa').lean()
 
                     res.json(keterlambatanDocuments)
-
                 } catch (error) {
                     next(error)
                 }
@@ -141,7 +136,11 @@ const createTerlambatRoutes = () => {
                 .notEmpty()
                 .withMessage('Parameter \'start\' Tidak Boleh Kosong')
                 .isISO8601()
-                .withMessage('Parameter tidak valid'),
+                .withMessage('Parameter \'start\' tidak valid'),
+            query('end')
+                .optional({ checkFalsy: true })
+                .isISO8601()
+                .withMessage('Parameter \'end\' tidak valid'),
             async (req: Request<{}, {}, {}, QueryParam>, res: Response, next: NextFunction) => {
                 try {
                     handleExpressValidatorError(validationResult(req))
@@ -151,11 +150,14 @@ const createTerlambatRoutes = () => {
                     const endDate = end ? new Date(end) : new Date()
 
                     const keterlambatanDocuments = await KeterlambatanModel.findByDate(startDate, endDate)
+                    console.log(keterlambatanDocuments);
 
                     const fileBuffer = await convertToExcel(keterlambatanDocuments)
+                    const fileSize = Buffer.from(fileBuffer).length
 
                     res.set('Content-disposition', 'attachment; filename=' + 'data-keterlambatan.xlsx')
                     res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    res.set('Content-Length', fileSize.toString())
 
                     const readStream = new Stream.PassThrough()
                     readStream.end(fileBuffer, 'base64')

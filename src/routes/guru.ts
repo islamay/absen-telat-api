@@ -3,7 +3,7 @@ import guruAuthMiddleware, { middlewareBodyType } from '../middlewares/guruAuth'
 import GuruModel, { IGuruAsParam, guruRole } from '../models/guru'
 import express, { Request, Response, NextFunction } from 'express'
 import createAdminAuthMiddleware from '../middlewares/adminAuth'
-import { check, validationResult } from 'express-validator'
+import { check, validationResult, query } from 'express-validator'
 import { accountStatus } from '../helpers/accountEnum'
 import Api401Error from '../error/Api401Error'
 import Api404Error from '../error/Api404Error'
@@ -18,17 +18,18 @@ const createRoutes = () => {
 
     {
         interface ReqQuery {
-            status?: guruRole,
+            nama: string,
         }
         router.get('/',
             adminAuthMiddleware,
+            query('nama')
+                .isString()
+                .withMessage('Nama harus berupa string'),
             async (req: Request<{}, {}, {}, ReqQuery>, res: Response, next: NextFunction) => {
-                const query = {}
-                if (_.isString(req.query.status)) _.assign(query, { status: req.query.status })
 
                 try {
-                    const guruDocuments = await GuruModel.find(query)
-                    if (_.isEmpty(guruDocuments)) throw new Api404Error('Guru Tidak Ditemukan')
+                    const { nama = '' } = req.query
+                    const guruDocuments = await GuruModel.find({ namaLengkap: { $regex: nama, $options: 'i' } }, ['-tokens', '-password'])
 
                     res.status(200).json(guruDocuments)
                 } catch (error) {
@@ -46,6 +47,40 @@ const createRoutes = () => {
         }
         type BodyType = IGuruAsParam;
         router.post('/', adminAuthMiddleware,
+            check(bodyEnum.namaLengkap)
+                .notEmpty()
+                .withMessage('Nama Lengkap Harus Diisi')
+                .isString()
+                .withMessage('Nama Lengkap Harus Berupa Text'),
+            check(bodyEnum.email)
+                .notEmpty()
+                .withMessage('Email Harus Diisi')
+                .isEmail()
+                .withMessage('Email Tidak Valid'),
+            check(bodyEnum.password)
+                .notEmpty()
+                .withMessage('Password Harus Diisi'),
+            async (req: Request<{}, {}, BodyType>, res: Response, next: NextFunction) => {
+                try {
+                    handleExpressValidatorError(validationResult(req))
+                    const guruDocument = await GuruModel.createGuru(req.body)
+                    const guruPublicData = guruDocument.secureData()
+                    res.status(201).json(guruPublicData)
+                } catch (error) {
+                    next(error)
+                }
+            }
+        )
+    }
+
+    {
+        enum bodyEnum {
+            namaLengkap = 'namaLengkap',
+            email = 'email',
+            password = 'password'
+        }
+        type BodyType = IGuruAsParam;
+        router.post('/signup', adminAuthMiddleware,
             check(bodyEnum.namaLengkap)
                 .notEmpty()
                 .withMessage('Nama Lengkap Harus Diisi')

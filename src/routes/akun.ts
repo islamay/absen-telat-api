@@ -34,8 +34,6 @@ const createAkunRouter = () => {
                 await guru.save()
                 return res.sendStatus(200)
             } catch (error) {
-                console.log(error);
-                console.log(error.message);
                 return res.status(400).json({ error: 'Server Error' })
             }
         }
