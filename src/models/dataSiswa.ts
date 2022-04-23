@@ -6,6 +6,19 @@ import Api404Error from '../error/Api404Error';
 import enumValues from '../helpers/enumValues'
 import studentAccountSchema, { StudentAccount } from './userSiswa';
 import { hash } from '../helpers/crypto';
+import { accountStatus } from '../helpers/accountEnum';
+import _ from 'lodash';
+
+const generateKelasString = function (kelas: Kelas) {
+    switch (kelas) {
+        case Kelas.X:
+            return kelasString.X
+        case Kelas.XI:
+            return kelasString.XI
+        case Kelas.XII:
+            return kelasString.XII
+    }
+}
 
 export enum Kelas {
     X = 10,
@@ -53,27 +66,23 @@ export interface DataSiswaMethods {
     getFullClass: () => string,
     getDataSiswa: () => Omit<DataSiswa, 'account'> & {
         account: Omit<StudentAccount, 'password' | 'tokens' | 'superToken'>
-    }
+    },
+    generateToken: () => Promise<string>,
+    wipeTokens: () => void
 }
 
 export type DocumentBaseDataSiswa = Document & DataSiswa & DataSiswaMethods;
 
 export interface SiswaModel extends Model<DataSiswa, {}, DataSiswaMethods> {
     createSiswa: (siswa: CreateStudent) => Promise<DocumentBaseDataSiswa>,
-    findSiswaByNis: (nis: string) => Promise<DocumentBaseDataSiswa>
-    findSiswaByName: (name: string) => Promise<DocumentBaseDataSiswa[]>
+    findByNis: (nis: string) => Promise<DocumentBaseDataSiswa>
+    findSiswaByName: (name: string) => Promise<DocumentBaseDataSiswa[]>,
+    findByEmail: (email: string) => Promise<DocumentBaseDataSiswa>,
+    signIn: (email: string, password: string) => Promise<{ siswa: SecureStudentData, token: string }>,
+    signUp: (nis: string, email: string, password: string) => Promise<{ token: string }>
 }
 
-const generateKelasString = function (kelas: Kelas) {
-    switch (kelas) {
-        case Kelas.X:
-            return kelasString.X
-        case Kelas.XI:
-            return kelasString.XI
-        case Kelas.XII:
-            return kelasString.XII
-    }
-}
+
 
 
 const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
@@ -123,7 +132,13 @@ const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
             }
         }
     },
-    account: studentAccountSchema
+    account: {
+        type: studentAccountSchema,
+        default: () => ({
+            status: accountStatus.TIDAK_ADA,
+            tokens: []
+        })
+    }
 })
 
 siswaSchema.virtual('keterlambatan', {
@@ -144,25 +159,62 @@ siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<
     }
 }
 
+
+siswaSchema.statics.findByEmail = async function (this: SiswaModel, email: string) {
+    try {
+        const student = await this.findOne({ 'account.email': email })
+        if (!student) throw new Api404Error('Email tidak ditemukan')
+
+        return student
+    } catch (error) {
+        throw error
+    }
+}
+
 siswaSchema.statics.signUp = async function (this: SiswaModel, nis: string, email: string, password: string) {
     const siswa = await this.findOne({ nis: nis })
+    const { account } = siswa
     if (!siswa) throw new Api404Error('Nis siswa tidak ditemukan')
-    if (siswa.account.email) throw new Api401Error('Siswa ini telah memiliki akun')
+    if (account && account.email && account.status !== accountStatus.TIDAK_ADA) throw new Api401Error('Siswa ini telah memiliki akun')
+
+    siswa.account.status = accountStatus.MENUNGGU
+    const token = await createMuridJWT(siswa)
 
     siswa.account.email = email
+    siswa.account.password = password
+    siswa.account.tokens = [{ token }]
+
+
+    await siswa.save()
+    return { token }
 }
 
 siswaSchema.statics.signIn = async function (this: SiswaModel, email: string, password: string) {
-    const account = await this.findOne({ 'account.email': email })
-    if (!account) throw new Api404Error('Email tidak ditemukan')
+    const student = await this.findOne({ 'account.email': email })
+    if (!student) throw new Api404Error('Email tidak ditemukan')
 
-    const isValidated = await compare(password, account.account.password)
+    const isValidated = await compare(password, student.account.password)
     if (!isValidated) throw new Api401Error('Password salah')
 
-    const token = await createMuridJWT(account)
+    const token = await createMuridJWT(student)
+    student.account.tokens.push({ token })
+    await student.save()
 
-    const result = account.getDataSiswa()
+    const result = student.getDataSiswa()
 
+
+    return { siswa: result, token }
+}
+
+siswaSchema.statics.findByNis = async function (this: SiswaModel, nis: string) {
+    try {
+        const student = await this.findOne({ nis })
+        if (!student) throw new Api404Error('Siswa tidak ditemukan')
+
+        return student
+    } catch (error) {
+        throw error
+    }
 }
 
 siswaSchema.statics.findSiswaByName = async function (this: SiswaModel, name: string) {
@@ -203,6 +255,18 @@ siswaSchema.methods.getDataSiswa = function (this: DocumentBaseDataSiswa) {
     return dataSiswaObject
 }
 
+siswaSchema.methods.wipeTokens = function (this: DocumentBaseDataSiswa) {
+    this.account.tokens = []
+}
+
+siswaSchema.methods.generateToken = async function (this: DocumentBaseDataSiswa) {
+    const token = await createMuridJWT(this)
+    if (_.isArray(this.account.tokens)) this.account.tokens.push({ token })
+    else this.account.tokens = [{ token }]
+
+    return token
+}
+
 siswaSchema.pre('save', async function (next) {
     if (this.isModified('kelas')) {
         this.kelasString = generateKelasString(this.kelas)
@@ -213,14 +277,13 @@ siswaSchema.pre('save', async function (next) {
         this.account.password = hashed
     }
 
-    if (this.account && this.account.tokens.length > 3) {
-        const tokens = this.account.tokens.splice(0, 1)
-        this.account.tokens = tokens
+    if (this.account && this.account.tokens && this.account.tokens.length > 3) {
+        this.account.tokens.splice(0, 1)
     }
 
     next()
 })
 
-const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('siswa', siswaSchema, 'siswa_data')
+const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('siswa', siswaSchema)
 
 export default SiswaModel

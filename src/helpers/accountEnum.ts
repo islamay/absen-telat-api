@@ -8,5 +8,6 @@ export enum accountRole {
 export enum accountStatus {
     AKTIF = 'AKTIF',
     MENUNGGU = 'MENUNGGU',
-    NONAKTIF = 'NONAKTIF'
+    NONAKTIF = 'NONAKTIF',
+    TIDAK_ADA = 'TIDAK_ADA'
 }

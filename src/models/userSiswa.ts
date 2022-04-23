@@ -6,29 +6,27 @@ export interface StudentAccount {
     email: string,
     password: string,
     status: accountStatus,
-    tokens: {
-        token: string,
-    }[],
+    tokens: { token: string }[],
     superToken: string
 }
 
 const studentAccountSchema = new mongoose.Schema<StudentAccount>({
     email: {
         type: String,
-        required: true,
     },
     password: {
         type: String,
-        required: true
     },
     status: {
         type: String,
-        enum: accountStatus,
+        enum: Object.values(accountStatus),
         default: accountStatus.MENUNGGU
     },
-    tokens: [{
-        type: String,
-    }],
+    tokens: {
+        type: [{
+            token: String
+        }]
+    },
     superToken: {
         type: String
     }
