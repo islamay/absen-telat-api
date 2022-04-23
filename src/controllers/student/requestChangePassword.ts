@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 import SiswaModel from '../../models/dataSiswa'
-import { createStudentSuperJwt, decodeStudentSuperJwt } from '../../helpers/jwtManager'
+import { createStudentSuperJwt } from '../../helpers/jwtManager'
 import { sendMail } from '../../helpers/mailer'
 import { createPasswordResetEmail } from '../../helpers/emailContent'
 
@@ -15,12 +15,11 @@ const requestChangePassword = (): RequestHandler<{}, {}, Body> => {
 
         try {
             const student = await SiswaModel.findByEmail(email)
-            const superToken = await createStudentSuperJwt(student)
-            const { pass } = await decodeStudentSuperJwt(superToken)
+            const { superToken, payload } = await createStudentSuperJwt(student)
             student.account.superToken = superToken
 
             const savingStudent = student.save()
-            const sendingEmail = sendMail(email, 'Permintaan mengganti password', createPasswordResetEmail(email, pass))
+            const sendingEmail = sendMail(email, 'Permintaan mengganti password', createPasswordResetEmail(email, payload.pass))
 
             await Promise.all([savingStudent, sendingEmail])
 

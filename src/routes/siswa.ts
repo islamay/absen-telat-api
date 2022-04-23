@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { body } from 'express-validator'
+import { body, header } from 'express-validator'
 import postStudent from '../controllers/student/post'
 import getStudent from '../controllers/student/get'
 import getByNis from '../controllers/student/getByNis'
@@ -10,7 +10,12 @@ import requestChangePassword from '../controllers/student/requestChangePassword'
 import verifyChangePassword from '../controllers/student/verifyChangePassword'
 import SiswaModel, { Jurusan } from '../models/dataSiswa'
 import validate from '../middlewares/validate'
-import { accountStatus } from '../helpers/accountEnum'
+import { AccountStatus, AccountType } from '../helpers/accountEnum'
+import signOut from '../controllers/student/signOut'
+import auth from '../middlewares/auth'
+import adminAuth from '../middlewares/adminAuth'
+import getStudentByNis from '../middlewares/getStudentByNisMiddleware'
+import updateStudentByNis from '../controllers/student/updateStudentByNis'
 
 const createStudentRoute = () => {
 
@@ -20,6 +25,12 @@ const createStudentRoute = () => {
     router.get('/', getStudent())
 
     router.post('/',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa text'),
+        validate(),
+        auth(AccountType.GURU),
+        adminAuth(),
         body('nis')
             .notEmpty().withMessage('Nis tidak boleh kosong')
             .isString().withMessage('Nis harus berupa text')
@@ -62,7 +73,7 @@ const createStudentRoute = () => {
             .notEmpty().withMessage('Nis tidak boleh kosong')
             .isString().withMessage('Nis harus berupa text')
             .custom(async (nis: string) => {
-                const student = await SiswaModel.findOne({ nis, 'account.status': { $ne: accountStatus.TIDAK_ADA } })
+                const student = await SiswaModel.findOne({ nis, 'account.status': { $ne: AccountStatus.TIDAK_ADA } })
                 if (student) throw new Error('Nis telah memiliki akun')
             }),
         body('email')
@@ -92,12 +103,35 @@ const createStudentRoute = () => {
         verifyChangePassword()
     )
 
-    router.get('/:nis', getByNis())
+    router.get('/:nis',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa string'),
+        validate(),
+        auth(AccountType.GURU),
+        getByNis()
+    )
 
-    router.put('/:nis',)
+    router.put('/:nis',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa string'),
+        validate(),
+        auth(AccountType.GURU),
+        getStudentByNis(),
+        updateStudentByNis()
+    )
+
+    router.delete('/:nis/signout',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa text'),
+        validate(),
+        auth(AccountType.SISWA),
+        signOut()
+    )
 
     router.post('/:nis/password')
-
 
     router.put('/:nis/password',
         changePassword()

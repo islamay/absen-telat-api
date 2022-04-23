@@ -1,12 +1,12 @@
 import { compare } from 'bcrypt';
 import mongoose, { Document, Model } from 'mongoose'
-import { createMuridJWT } from '../helpers/jwtManager';
+import { createStudentJwt } from '../helpers/jwtManager';
 import Api401Error from '../error/Api401Error';
 import Api404Error from '../error/Api404Error';
 import enumValues from '../helpers/enumValues'
 import studentAccountSchema, { StudentAccount } from './userSiswa';
 import { hash } from '../helpers/crypto';
-import { accountStatus } from '../helpers/accountEnum';
+import { AccountStatus } from '../helpers/accountEnum';
 import _ from 'lodash';
 
 const generateKelasString = function (kelas: Kelas) {
@@ -135,7 +135,7 @@ const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
     account: {
         type: studentAccountSchema,
         default: () => ({
-            status: accountStatus.TIDAK_ADA,
+            status: AccountStatus.TIDAK_ADA,
             tokens: []
         })
     }
@@ -175,10 +175,10 @@ siswaSchema.statics.signUp = async function (this: SiswaModel, nis: string, emai
     const siswa = await this.findOne({ nis: nis })
     const { account } = siswa
     if (!siswa) throw new Api404Error('Nis siswa tidak ditemukan')
-    if (account && account.email && account.status !== accountStatus.TIDAK_ADA) throw new Api401Error('Siswa ini telah memiliki akun')
+    if (account && account.email && account.status !== AccountStatus.TIDAK_ADA) throw new Api401Error('Siswa ini telah memiliki akun')
 
-    siswa.account.status = accountStatus.MENUNGGU
-    const token = await createMuridJWT(siswa)
+    siswa.account.status = AccountStatus.MENUNGGU
+    const { token } = await createStudentJwt(siswa)
 
     siswa.account.email = email
     siswa.account.password = password
@@ -196,8 +196,7 @@ siswaSchema.statics.signIn = async function (this: SiswaModel, email: string, pa
     const isValidated = await compare(password, student.account.password)
     if (!isValidated) throw new Api401Error('Password salah')
 
-    const token = await createMuridJWT(student)
-    student.account.tokens.push({ token })
+    const token = await student.generateToken()
     await student.save()
 
     const result = student.getDataSiswa()
@@ -260,7 +259,7 @@ siswaSchema.methods.wipeTokens = function (this: DocumentBaseDataSiswa) {
 }
 
 siswaSchema.methods.generateToken = async function (this: DocumentBaseDataSiswa) {
-    const token = await createMuridJWT(this)
+    const { token } = await createStudentJwt(this)
     if (_.isArray(this.account.tokens)) this.account.tokens.push({ token })
     else this.account.tokens = [{ token }]
 
