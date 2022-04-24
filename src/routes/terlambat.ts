@@ -35,7 +35,17 @@ const createTerlambatRoutes = () => {
         postLateness()
     )
 
-    router.get('/download',)
+    router.get('/download',
+        auth(AccountType.GURU),
+        query('start')
+            .isISO8601()
+            .withMessage('start tidak valid'),
+        query('end')
+            .optional()
+            .isISO8601()
+            .withMessage('end tidak valid'),
+
+    )
 
     router.patch('/:id',)
 
