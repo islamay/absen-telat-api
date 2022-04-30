@@ -24,11 +24,10 @@ export const createLateness = async ({ nis, guruId }: { nis: string, guruId: mon
 
     const isAlreadyRecordedToday = await LatenessModel.findOne({
         nis, date: {
-            $gte: new Date(currentYear, currentMonth, currentDay),
-            $lte: new Date(currentYear, currentMonth, tomorrowDate.getDate())
+            $gte: new Date(currentYear,currentMonth,currentDay),
+            $lte: new Date(tomorrowDate.getFullYear(), tomorrowDate.getMonth(), tomorrowDate.getDate())
         }
     }).exec()
-
 
     if (isAlreadyRecordedToday) throw new Api400Error('ValidationError', 'Siswa sudah diabsen hari ini')
 
