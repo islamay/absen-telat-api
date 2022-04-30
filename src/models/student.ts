@@ -4,7 +4,6 @@ import { createStudentJwt } from '../helpers/jwtManager';
 import Api401Error from '../error/Api401Error';
 import Api404Error from '../error/Api404Error';
 import enumValues from '../helpers/enumValues'
-import studentAccountSchema, { StudentAccount } from './userSiswa';
 import { hash } from '../helpers/crypto';
 import { AccountStatus } from '../helpers/accountEnum';
 import _ from 'lodash';
@@ -82,8 +81,35 @@ export interface SiswaModel extends Model<DataSiswa, {}, DataSiswaMethods> {
     signUp: (nis: string, email: string, password: string) => Promise<{ token: string }>
 }
 
+export interface StudentAccount {
+    email: string,
+    password: string,
+    status: AccountStatus,
+    tokens: { token: string }[],
+    superToken: string
+}
 
-
+const studentAccountSchema = new mongoose.Schema<StudentAccount>({
+    email: {
+        type: String,
+    },
+    password: {
+        type: String,
+    },
+    status: {
+        type: String,
+        enum: Object.values(AccountStatus),
+        default: AccountStatus.MENUNGGU
+    },
+    tokens: {
+        type: [{
+            token: String
+        }]
+    },
+    superToken: {
+        type: String
+    }
+})
 
 const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
     nis: {
@@ -178,15 +204,12 @@ siswaSchema.statics.signUp = async function (this: SiswaModel, nis: string, emai
     if (account && account.email && account.status !== AccountStatus.TIDAK_ADA) throw new Api401Error('Siswa ini telah memiliki akun')
 
     siswa.account.status = AccountStatus.MENUNGGU
-    const { token } = await createStudentJwt(siswa)
 
     siswa.account.email = email
     siswa.account.password = password
-    siswa.account.tokens = [{ token }]
 
 
     await siswa.save()
-    return { token }
 }
 
 siswaSchema.statics.signIn = async function (this: SiswaModel, email: string, password: string) {
@@ -196,13 +219,14 @@ siswaSchema.statics.signIn = async function (this: SiswaModel, email: string, pa
     const isValidated = await compare(password, student.account.password)
     if (!isValidated) throw new Api401Error('Password salah')
 
+    if (student.account.status === 'MENUNGGU') throw new Api401Error('Akun belum aktif, harap hubungi admin')
+    else if (student.account.status === 'NONAKTIF') throw new Api401Error('Akun tidak aktif')
+
+
     const token = await student.generateToken()
     await student.save()
 
-    const result = student.getDataSiswa()
-
-
-    return { siswa: result, token }
+    return { siswa: student.getDataSiswa(), token }
 }
 
 siswaSchema.statics.findByNis = async function (this: SiswaModel, nis: string) {
@@ -283,6 +307,6 @@ siswaSchema.pre('save', async function (next) {
     next()
 })
 
-const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('siswa', siswaSchema)
+const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('student', siswaSchema)
 
 export default SiswaModel

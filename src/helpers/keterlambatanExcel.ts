@@ -8,7 +8,7 @@ require('regenerator-runtime/runtime');
 
 import ExcelJS from 'exceljs'
 import { ILateness } from '../models/lateness'
-import { DocumentBaseDataSiswa } from '../models/dataSiswa'
+import { DocumentBaseDataSiswa } from '../models/student'
 import _ from 'lodash';
 
 const excelTable = [

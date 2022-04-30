@@ -1,7 +1,7 @@
 import { NextFunction, RequestHandler, Request, Response } from 'express'
-import { AccountType } from '../helpers/accountEnum'
-import TeacherModel, { TeacherDocument, ITeacherModel } from '../models/guru'
-import SiswaModel, { DocumentBaseDataSiswa, SiswaModel as ISiswaModel } from '../models/dataSiswa'
+import { AccountType, TeacherRole } from '../helpers/accountEnum'
+import TeacherModel, { TeacherDocument, ITeacherModel } from '../models/teacher'
+import SiswaModel, { DocumentBaseDataSiswa, SiswaModel as ISiswaModel } from '../models/student'
 import { StudentJwtPayload, TeacherJwtPayload, verifyStudentJwt, verifyTeacherJwt } from '../helpers/jwtManager'
 import splitBearerToken from '../helpers/splitBearerToken'
 import Api401Error from '../error/Api401Error'
@@ -50,19 +50,22 @@ const auth = (type: AccountType): RequestHandler<{}, {}, BodyAfterAuth> => {
     }
 }
 
-type AuthenticateFunction = (type: AccountType, req: Request<{}, {}, BodyAfterAuth>) => Promise<BodyAfterAuth>
+type AuthenticateProcess<T1 = {}, T2 = {}, T3 = {}> = (req: Request<T1, {}, BodyAfterAuth & T2, T3>) => Promise<void>
+type Authenticate = <T1 = {}, T2 = {}, T3 = {}>(type: AccountType, cb?: (req: Request<T1, {}, BodyAfterAuth & T2, T3>) => void | Promise<void>) => AuthenticateProcess<T1, T2, T3>
+type AuthIn<T1 = {}, T2 = {}, T3 = {}> = (auths: AuthenticateProcess[]) => RequestHandler<T1, {}, BodyAfterAuth & T2, T3>
+type AdminAuth = (req: Request<{}, {}, BodyAfterAuth>) => void | Promise<void>
 
-const authenticate: AuthenticateFunction = async (type, req) => {
+export const authenticate: Authenticate = (type, cb) => {
     let model: ISiswaModel | ITeacherModel;
-    const token = splitBearerToken(req.headers.authorization)
 
     if (type === AccountType.GURU) model = TeacherModel
     else model = SiswaModel
 
+    return async (req) => {
+        const token = splitBearerToken(req.headers.authorization)
 
-    try {
         const verifyingToken = type === AccountType.GURU ? verifyTeacherJwt(token) : verifyStudentJwt(token)
-        const queryingUser = type === AccountType.GURU ? model.findOne({ 'tokens.token': token }) : model.findOne({ account: { 'tokens.token': token } })
+        const queryingUser = type === AccountType.GURU ? model.findOne({ 'tokens.token': token }) : model.findOne({ 'account.tokens.token': token })
 
         const [decoded, user] = await Promise.all([verifyingToken, queryingUser])
 
@@ -75,20 +78,28 @@ const authenticate: AuthenticateFunction = async (type, req) => {
             [type === AccountType.GURU ? 'teacher' : 'student']: user
         }
 
-        return { auth: req.body.auth }
+        if (cb) {
 
-    } catch (error) {
+            await cb(req)
+            return;
+        }
+        return;
 
     }
 }
 
+export const adminAuth: AdminAuth = (req) => {
 
-export const authIn = (authArray: AuthenticateFunction[]): RequestHandler => {
+    if (req.body.auth.teacher.role !== TeacherRole.ADMIN) throw new Api401Error('Bukan admin')
+}
+
+export const authIn: AuthIn = (authArray) => {
 
     return async (req, res, next) => {
-
         try {
-
+            const promises = authArray.map(v => v(req))
+            await Promise.any(promises)
+            next()
         } catch (error) {
             next(new Api401Error('Token tidak valid'))
         }

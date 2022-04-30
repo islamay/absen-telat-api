@@ -5,8 +5,8 @@ import { Types } from 'mongoose'
 import Api401Error from '../error/Api401Error'
 import Api500Error from '../error/Api500Error'
 import { AccountType, AccountStatus, TeacherRole } from './accountEnum'
-import SiswaModel, { DocumentBaseDataSiswa } from '../models/dataSiswa'
-import { TeacherDocument } from '../models/guru'
+import SiswaModel, { DocumentBaseDataSiswa } from '../models/student'
+import { TeacherDocument } from '../models/teacher'
 
 
 export enum KnownJwtError {

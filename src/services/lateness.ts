@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 import Api400Error from '../error/Api400Error'
-import SiswaModel from '../models/dataSiswa'
+import SiswaModel from '../models/student'
 import LatenessModel, { ILatenessDocument, } from '../models/lateness'
 
 

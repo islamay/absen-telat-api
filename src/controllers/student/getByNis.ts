@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express'
-import SiswaModel from '../../models/dataSiswa'
+import SiswaModel from '../../models/student'
 
 interface Params {
     nis: string

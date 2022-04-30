@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express'
-import SiswaModel from '../../models/dataSiswa'
+import SiswaModel from '../../models/student'
 import { createStudentSuperJwt } from '../../helpers/jwtManager'
 import { sendMail } from '../../helpers/mailer'
 import { createPasswordResetEmail } from '../../helpers/emailContent'

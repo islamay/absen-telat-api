@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { body, header } from 'express-validator'
+import { body, header, query } from 'express-validator'
 import postStudent from '../controllers/student/post'
 import getStudent from '../controllers/student/get'
 import getByNis from '../controllers/student/getByNis'
@@ -8,29 +8,35 @@ import studentSignUp from '../controllers/student/signUp'
 import changePassword from '../controllers/student/changePassword'
 import requestChangePassword from '../controllers/student/requestChangePassword'
 import verifyChangePassword from '../controllers/student/verifyChangePassword'
-import SiswaModel, { Jurusan } from '../models/dataSiswa'
+import SiswaModel, { Jurusan } from '../models/student'
 import validate from '../middlewares/validate'
 import { AccountStatus, AccountType } from '../helpers/accountEnum'
 import signOut from '../controllers/student/signOut'
-import auth from '../middlewares/auth'
-import adminAuth from '../middlewares/adminAuth'
+import auth, { authenticate, adminAuth, authIn } from '../middlewares/auth'
 import getStudentByNis from '../middlewares/getStudentByNisMiddleware'
-import updateStudentByNis from '../controllers/student/updateStudentByNis'
+import patchStudent from '../controllers/student/patch'
+
 
 const createStudentRoute = () => {
 
 
     const router = Router()
 
-    router.get('/', getStudent())
+    router.get('/',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa text'),
+        validate(),
+        authIn([authenticate(AccountType.GURU)]),
+        getStudent()
+    )
 
     router.post('/',
         header('authorization')
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa text'),
         validate(),
-        auth(AccountType.GURU),
-        adminAuth(),
+        authIn([authenticate(AccountType.GURU)]),
         body('nis')
             .notEmpty().withMessage('Nis tidak boleh kosong')
             .isString().withMessage('Nis harus berupa text')
@@ -71,19 +77,11 @@ const createStudentRoute = () => {
     router.post('/signup',
         body('nis')
             .notEmpty().withMessage('Nis tidak boleh kosong')
-            .isString().withMessage('Nis harus berupa text')
-            .custom(async (nis: string) => {
-                const student = await SiswaModel.findOne({ nis, 'account.status': { $ne: AccountStatus.TIDAK_ADA } })
-                if (student) throw new Error('Nis telah memiliki akun')
-            }),
+            .isString().withMessage('Nis harus berupa text'),
         body('email')
             .notEmpty().withMessage('Email tidak boleh kosong')
             .isString().withMessage('Email harus berupa text')
-            .isEmail().withMessage('Email tidak valid')
-            .custom(async (email: string) => {
-                const student = await SiswaModel.findOne({ 'account.email': email })
-                if (student) throw new Error('Email telah terpakai')
-            }),
+            .isEmail().withMessage('Email tidak valid'),
         body('password')
             .notEmpty().withMessage('Password tidak boleh kosong')
             .isString().withMessage('Password harus berupa text'),
@@ -112,14 +110,14 @@ const createStudentRoute = () => {
         getByNis()
     )
 
-    router.put('/:nis',
+    router.patch('/:nis',
         header('authorization')
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa string'),
         validate(),
-        auth(AccountType.GURU),
+        authIn([authenticate(AccountType.SISWA), authenticate(AccountType.GURU, adminAuth)]),
         getStudentByNis(),
-        updateStudentByNis()
+        patchStudent()
     )
 
     router.delete('/:nis/signout',

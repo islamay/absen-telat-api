@@ -10,6 +10,7 @@ const logError = () => {
 const createErrorMiddleware = () => {
 
     return (err: any, req: Request, res: Response, next: NextFunction) => {
+        console.log(err);
 
         if (err instanceof BaseError) {
             res.status(err.statusCode)
@@ -20,7 +21,11 @@ const createErrorMiddleware = () => {
             res.json(error.getFormattedError())
         } else {
             console.log(err);
-            return res.sendStatus(500)
+            res.status(500)
+            res.json({
+                name: 'InternalError',
+                message: 'Server error, coba lagi beberapa saat'
+            })
         }
     }
 }

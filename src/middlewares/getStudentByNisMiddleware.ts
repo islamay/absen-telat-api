@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 import Api404Error from '../error/Api404Error'
-import SiswaModel, { DocumentBaseDataSiswa } from '../models/dataSiswa'
+import SiswaModel, { DocumentBaseDataSiswa } from '../models/student'
 
 interface Params {
     nis: string

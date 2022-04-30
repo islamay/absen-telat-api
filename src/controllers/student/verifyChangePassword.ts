@@ -1,7 +1,7 @@
 import { RequestHandler } from 'express'
 import Api401Error from '../../error/Api401Error'
 import { verifyStudentSuperJwt } from '../../helpers/jwtManager'
-import SiswaModel from '../../models/dataSiswa'
+import SiswaModel from '../../models/student'
 
 interface Body {
     email: string

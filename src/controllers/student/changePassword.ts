@@ -2,7 +2,7 @@ import { RequestHandler } from 'express'
 import Api401Error from '../../error/Api401Error'
 import { verifyStudentSuperJwt } from '../../helpers/jwtManager'
 import splitBearerToken from '../../helpers/splitBearerToken'
-import SiswaModel from '../../models/dataSiswa'
+import SiswaModel from '../../models/student'
 
 interface Body {
     password: string

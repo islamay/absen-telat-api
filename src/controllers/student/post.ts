@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express'
-import SiswaModel, { DataSiswa } from '../../models/dataSiswa'
+import SiswaModel, { DataSiswa } from '../../models/student'
 
 type Body = Omit<DataSiswa, 'kelasString' | 'fullClass' | 'account'>
 
