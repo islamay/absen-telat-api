@@ -8,7 +8,8 @@ interface Body {
 }
 
 interface ResponseType {
-    token: string
+    nis: string,
+    email: string
 }
 
 const studentSignUp = (): RequestHandler<{}, {}, Body> => {
@@ -18,8 +19,9 @@ const studentSignUp = (): RequestHandler<{}, {}, Body> => {
         try {
             await SiswaModel.signUp(nis, email, password)
 
-
-            res.sendStatus(201)
+            res.status(201)
+            res.type('application/json')
+            res.json({ nis, email })
         } catch (error) {
             next(error)
         }

@@ -13,7 +13,7 @@ interface ITeacher {
     superToken: string
 }
 
-type SecureTeacherData = Omit<ITeacher, 'password' | 'tokens' | 'superToken'>
+type SecureTeacherData = Omit<ITeacher, 'password' | 'tokens' | 'superToken'> & { _id: string }
 
 interface ITeacherMethods {
     secureData: () => SecureTeacherData,
@@ -76,8 +76,8 @@ TeacherSchema.pre('save', async function (this, next) {
 
 
 TeacherSchema.methods.secureData = function (this: TeacherDocument) {
-    const { nama, email, status, role } = this
-    return { nama, email, status, role }
+    const { nama, email, status, role, _id } = this
+    return { nama, email, status, role, _id }
 }
 
 TeacherSchema.methods.generateToken = async function (this: TeacherDocument) {

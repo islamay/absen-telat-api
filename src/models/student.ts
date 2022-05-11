@@ -16,19 +16,23 @@ const generateKelasString = function (kelas: Kelas) {
             return kelasString.XI
         case Kelas.XII:
             return kelasString.XII
+        case Kelas.XIII:
+            return kelasString.XIII
     }
 }
 
 export enum Kelas {
     X = 10,
     XI = 11,
-    XII = 12
+    XII = 12,
+    XIII = 13
 }
 
 export enum kelasString {
     X = 'X',
     XI = 'XI',
-    XII = 'XII'
+    XII = 'XII',
+    XIII = 'XIII'
 }
 
 export enum Jurusan {
@@ -168,7 +172,7 @@ const siswaSchema = new mongoose.Schema<DataSiswa, {}, DataSiswaMethods>({
 })
 
 siswaSchema.virtual('keterlambatan', {
-    ref: 'keterlambatan',
+    ref: 'lateness',
     localField: 'nis',
     foreignField: 'nis'
 })
@@ -260,7 +264,8 @@ siswaSchema.methods.getFullClass = function (this: DataSiswa) {
 }
 
 siswaSchema.methods.getDataSiswa = function (this: DocumentBaseDataSiswa) {
-    const dataSiswaObject: SecureStudentData & { account: SecureStudentAccountData } = {
+    const dataSiswaObject: SecureStudentData & { account: SecureStudentAccountData } & { _id: string } = {
+        _id: this._id,
         nis: this.nis,
         namaLengkap: this.namaLengkap,
         kelas: this.kelas,

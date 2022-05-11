@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import Api400Error from '../error/Api400Error'
 import SiswaModel from '../models/student'
-import LatenessModel, { ILatenessDocument, } from '../models/lateness'
+import LatenessModel, { ILatenessDocument, Purposes, } from '../models/lateness'
 
 
 export const findByDate = async ({ start, end, startIndex, limit }: { start: Date, end?: Date, startIndex?: number, limit?: number }): Promise<ILatenessDocument[]> => {
@@ -11,28 +11,33 @@ export const findByDate = async ({ start, end, startIndex, limit }: { start: Dat
 
 
 
-export const createLateness = async ({ nis, guruId }: { nis: string, guruId: mongoose.Types.ObjectId }) => {
+export const createLateness = async ({ nis, purpose, guruId }: { nis: string, purpose: Purposes, guruId: mongoose.Types.ObjectId }) => {
     const currentDate = new Date()
-    const currentYear = currentDate.getFullYear()
-    const currentMonth = currentDate.getMonth()
-    const currentDay = currentDate.getDate()
-    const tomorrowDate = new Date(currentDate)
-    tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+    const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
     const student = await SiswaModel.findOne({ nis })
     if (!student) throw new Api400Error('ValidationError', 'Nis tidak valid')
 
     const isAlreadyRecordedToday = await LatenessModel.findOne({
         nis, date: {
-            $gte: new Date(currentYear,currentMonth,currentDay),
-            $lte: new Date(tomorrowDate.getFullYear(), tomorrowDate.getMonth(), tomorrowDate.getDate())
+            $gte: today,
+            $lt: tomorrow,
         }
     }).exec()
+
+    console.log({
+        gte: today,
+        lt: tomorrow
+    });
+
+    console.log(isAlreadyRecordedToday);
+
 
     if (isAlreadyRecordedToday) throw new Api400Error('ValidationError', 'Siswa sudah diabsen hari ini')
 
     const lateness = new LatenessModel({ nis, guruId })
     await lateness.save()
     return lateness
-    return true
 }

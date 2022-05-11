@@ -18,6 +18,8 @@ import patchLateness from '../controllers/lateness/patch'
 import deleteLateness from '../controllers/lateness/delete'
 import Api401Error from '../error/Api401Error'
 import getLatenessByNis from '../middlewares/getLatenessByNis'
+import { Purposes } from '../models/lateness'
+import downloadLatenesses from '../controllers/lateness/download'
 
 const router = express.Router()
 
@@ -37,6 +39,12 @@ const createTerlambatRoutes = () => {
             .optional()
             .isInt().withMessage('Limit harus berupa bilangan bulat')
             .toInt(),
+        query('start')
+            .optional()
+            .isISO8601().withMessage('Date tidak valid').toDate(),
+        query('end')
+            .optional()
+            .isISO8601().withMessage('Date tidak valid').toDate(),
         validate(),
         pagination(),
         getLateness()
@@ -51,28 +59,45 @@ const createTerlambatRoutes = () => {
         body('nis')
             .notEmpty().withMessage('Nis tidak boleh kosong')
             .isString().withMessage('Nis harus berupa text'),
+        body('purpose')
+            .notEmpty().withMessage('Alasan tidak boleh kosong')
+            .isString().withMessage('Nis harus berupa text')
+            .isIn(Object.values(Purposes)).withMessage('Alasan tidak valid'),
         validate(),
         postLateness()
     )
 
-    router.get('/download',
-        header('authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong')
-            .isString().withMessage('Token harus berupa text'),
-        validate(),
-        auth(AccountType.GURU),
-        query('start')
-            .isISO8601()
-            .withMessage('start tidak valid'),
-        query('end')
-            .optional()
-            .isISO8601()
-            .withMessage('end tidak valid'),
-        validate(),
+    // router.get('/download',
+    //     header('authorization')
+    //         .notEmpty().withMessage('Token tidak boleh kosong')
+    //         .isString().withMessage('Token harus berupa text'),
+    //     validate(),
+    //     auth(AccountType.GURU),
+    //     query('start')
+    //         .isISO8601()
+    //         .withMessage('start tidak valid'),
+    //     query('end')
+    //         .optional()
+    //         .isISO8601()
+    //         .withMessage('end tidak valid'),
+    //     validate(),
 
+    // )
+
+    router.get('/download',
+        query('start')
+            .notEmpty()
+            .isISO8601().withMessage('Date tidak valid')
+            .toDate(),
+        query('end')
+            .notEmpty()
+            .isISO8601().withMessage('Date tidak valid')
+            .toDate(),
+        validate(),
+        downloadLatenesses()
     )
 
-    router.get('/:nis',
+    router.get('/nis/:nis',
         header('authorization')
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa text'),
@@ -88,6 +113,15 @@ const createTerlambatRoutes = () => {
             .isInt().withMessage('Tahun harus berupa bilangan bulat'),
         pagination(),
         getLatenessByNis(true)
+    )
+
+    router.get('/:id',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa text'),
+        validate(),
+        authIn([authenticate(AccountType.SISWA), authenticate(AccountType.GURU, adminAuth)]),
+        getLatenessById(true),
     )
 
     router.patch('/:id',
@@ -113,6 +147,8 @@ const createTerlambatRoutes = () => {
         getLatenessById(),
         deleteLateness()
     )
+
+
 
 
     return router

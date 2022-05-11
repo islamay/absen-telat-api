@@ -11,7 +11,7 @@ export interface BodyAfterGetLatenessById {
     lateness: ILatenessDocument
 }
 
-const getLatenessById = (): RequestHandler<ParamsForGetLatenessById, {}, BodyAfterGetLatenessById> => {
+const getLatenessById = (send?: boolean): RequestHandler<ParamsForGetLatenessById, {}, BodyAfterGetLatenessById> => {
 
     return async (req, res, next) => {
         const { id } = req.params
@@ -20,6 +20,12 @@ const getLatenessById = (): RequestHandler<ParamsForGetLatenessById, {}, BodyAft
             if (!lateness) throw new Api404Error('Data tidak ditemukan')
 
             req.body.lateness = lateness
+
+            if (send) {
+                res.json(lateness)
+
+                return;
+            }
             next()
         } catch (error) {
             next(error)

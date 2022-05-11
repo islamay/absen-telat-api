@@ -15,7 +15,10 @@ const patchStudent = (): RequestHandler<{}, {}, Body> => {
     return async (req, res, next) => {
         const { nama = null, email = null, status = null, student = null, auth } = req.body
         try {
-            if (auth.type === AccountType.SISWA && nama || status) throw new Api401Error('Tidak berhak mengganti dokumen')
+
+            if (auth.type === AccountType.SISWA && auth.student.nis !== student.nis && nama && status) {
+                throw new Api401Error('Tidak berhak mengganti dokumen')
+            }
 
             nama ? student.namaLengkap = nama : null
             email ? student.account.email = email : null

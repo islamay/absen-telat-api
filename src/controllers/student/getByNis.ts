@@ -1,30 +1,29 @@
 import { RequestHandler } from 'express'
-import SiswaModel from '../../models/student'
+import { ILatenessDocument } from '../../models/lateness'
+import SiswaModel, { DocumentBaseDataSiswa } from '../../models/student'
 
 interface Params {
     nis: string
 }
 
-interface Query {
-    keterlambatan?: boolean
+interface Body {
+    student: DocumentBaseDataSiswa & {
+        keterlambatan?: ILatenessDocument[]
+    }
 }
 
-const getByNis = (): RequestHandler<Params, {}, {}, Query> => {
+const getByNis = (): RequestHandler<Params, {}, Body> => {
 
     return async (req, res, next) => {
-        const { nis } = req.params
-        const { keterlambatan = null } = req.query
-        try {
-            const student = await SiswaModel.findOne({ nis })
-            if (keterlambatan) {
-                await student.populate({ path: 'keterlambatan' })
-                console.log(student);
-            }
-            res.type('application/json')
-            res.json(student)
-        } catch (error) {
-            next(error)
+        const { student } = req.body
+        const secureStudent = student.getDataSiswa()
+        if (student.keterlambatan) {
+            const latenesses = student.keterlambatan.map(l => l.toObject())
+            res.json({ ...secureStudent, keterlambatan: latenesses })
+            return;
         }
+
+        res.json(secureStudent)
     }
 }
 

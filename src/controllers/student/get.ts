@@ -43,16 +43,11 @@ const getStudent = (): RequestHandler<{}, {}, Body, Query> => {
         }
 
 
-        let query = {}
-        if (withName) {
-            query = Object.assign(query, { namaLengkap: {$regex: nama, $options: 'i'}})
-        }
-        if (withClass) {
-            query = Object.assign(query, { kelas: { $in: classArray } })
-        }
-        if (withJurusan) {
-            query = Object.assign(query, { jurusan: { $in: majors } })
-        }
+        const query = {}
+        if (withName) Object.assign(query, { namaLengkap: { $regex: nama, $options: 'i' } })
+        if (withClass) Object.assign(query, { kelas: { $in: classArray } })
+        if (withJurusan) Object.assign(query, { jurusan: { $in: majors } })
+
 
         try {
             const students = (await SiswaModel.find(query).skip(startIndex).limit(limit)).map(s => s.getDataSiswa())

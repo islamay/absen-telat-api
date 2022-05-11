@@ -15,6 +15,7 @@ import signOut from '../controllers/student/signOut'
 import auth, { authenticate, adminAuth, authIn } from '../middlewares/auth'
 import getStudentByNis from '../middlewares/getStudentByNisMiddleware'
 import patchStudent from '../controllers/student/patch'
+import Api401Error from '../error/Api401Error'
 
 
 const createStudentRoute = () => {
@@ -106,7 +107,11 @@ const createStudentRoute = () => {
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa string'),
         validate(),
-        auth(AccountType.GURU),
+        authIn([authenticate(AccountType.GURU), authenticate(AccountType.SISWA, req => {
+            //@ts-ignore
+            if (req.params.nis !== req.body.auth.student.nis) throw new Api401Error('Bukan pemilik dokumen')
+        })]),
+        getStudentByNis(),
         getByNis()
     )
 
