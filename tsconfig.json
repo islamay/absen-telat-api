@@ -5,6 +5,7 @@
         "lib": [
             "ES2021.Promise"
         ],
+        "module": "CommonJS",
         "noImplicitAny": true,
         "moduleResolution": "node",
         "sourceMap": true,

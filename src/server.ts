@@ -1,9 +1,7 @@
 import app from './index'
 import mongoose from 'mongoose'
 
-process.env.TZ = 'Asia/Makassar'
-
-const port = 5000
+const port = process.env.PORT || 5000
 const main = async () => {
     try {
         if (process.env.NODE_ENV !== 'test') {
