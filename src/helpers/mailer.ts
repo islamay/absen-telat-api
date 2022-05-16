@@ -4,7 +4,8 @@ import nodemailer from 'nodemailer'
 
 
 const transport = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'snipbisa.com',
+    port: 465,
     auth: {
         user: process.env.MAIL,
         pass: process.env.MAIL_PASS
@@ -24,4 +25,11 @@ export const sendMail = (to: string, subject: string, html: string) => {
     }
 
     return transport.sendMail(mailOptions)
+}
+
+export const sendPasswordResetRequestEmail = (to: string, link: string) => {
+
+    sendMail(to, 'Permintaan reset password',
+        `halo, <b>${to}</b> <p>berikut adalah link untuk mereset password anda <a href="${link}" target="_blank">${link}</a></p>`
+    )
 }

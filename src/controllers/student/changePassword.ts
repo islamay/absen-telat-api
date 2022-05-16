@@ -3,6 +3,7 @@ import Api401Error from '../../error/Api401Error'
 import { verifyStudentSuperJwt } from '../../helpers/jwtManager'
 import splitBearerToken from '../../helpers/splitBearerToken'
 import SiswaModel from '../../models/student'
+import { findByNis } from '../../services/student'
 
 interface Body {
     password: string
@@ -21,7 +22,7 @@ const changePassword = (): RequestHandler<Params, {}, Body> => {
 
         try {
             const suppliedToken = splitBearerToken(bearerToken)
-            const queryStudent = SiswaModel.findByNis(nis)
+            const queryStudent = findByNis(nis)
             const validateToken = verifyStudentSuperJwt(suppliedToken)
             const [student, decodedToken] = await Promise.all([queryStudent, validateToken])
 

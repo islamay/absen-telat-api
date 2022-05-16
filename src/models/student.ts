@@ -44,8 +44,6 @@ export enum Jurusan {
     TITL = 'TITL',
     DPIB = 'DPIB'
 }
-
-
 export interface DataSiswa {
     nis: string,
     namaLengkap: string,
@@ -57,32 +55,18 @@ export interface DataSiswa {
     hasAccount: boolean,
     account: StudentAccount,
 }
-
-type CreateStudent = Omit<DataSiswa, 'kelasString' | 'fullClass' | 'hasAccount' | 'account'>
-
 type SecureStudentData = Omit<DataSiswa, 'account'> & { account: SecureStudentAccountData }
-
 type SecureStudentAccountData = Omit<StudentAccount, 'password' | 'tokens' | 'superToken'>
-
-
 export interface DataSiswaMethods {
-    getFullClass: () => string,
-    getDataSiswa: () => Omit<DataSiswa, 'account'> & {
-        account: Omit<StudentAccount, 'password' | 'tokens' | 'superToken'>
-    },
+    getDataSiswa: () => Omit<DataSiswa, 'account'> & { account: Omit<StudentAccount, 'password' | 'tokens' | 'superToken'> },
     generateToken: () => Promise<string>,
-    wipeTokens: () => void
+    wipeTokens: () => void,
+    wipeSuperToken: () => void,
 }
 
 export type DocumentBaseDataSiswa = Document & DataSiswa & DataSiswaMethods;
 
-export interface SiswaModel extends Model<DataSiswa, {}, DataSiswaMethods> {
-    createSiswa: (siswa: CreateStudent) => Promise<DocumentBaseDataSiswa>,
-    findByNis: (nis: string) => Promise<DocumentBaseDataSiswa>
-    findSiswaByName: (name: string) => Promise<DocumentBaseDataSiswa[]>,
-    findByEmail: (email: string) => Promise<DocumentBaseDataSiswa>,
-    signIn: (email: string, password: string) => Promise<{ siswa: SecureStudentData, token: string }>,
-    signUp: (nis: string, email: string, password: string) => Promise<{ token: string }>
+export interface StudentModel extends Model<DataSiswa, {}, DataSiswaMethods> {
 }
 
 export interface StudentAccount {
@@ -177,92 +161,6 @@ siswaSchema.virtual('keterlambatan', {
     foreignField: 'nis'
 })
 
-siswaSchema.statics.createSiswa = async function (this: SiswaModel, siswa: Omit<DataSiswa, 'kelasString' | 'fullClass'>) {
-    const { nis, namaLengkap, kelas, kelasNo, jurusan } = siswa || null
-
-    try {
-        const siswaDocument = new this({ nis, namaLengkap, kelas, kelasNo, jurusan })
-        await siswaDocument.save()
-        return siswaDocument
-    } catch (err) {
-        throw err
-    }
-}
-
-
-siswaSchema.statics.findByEmail = async function (this: SiswaModel, email: string) {
-    try {
-        const student = await this.findOne({ 'account.email': email })
-        if (!student) throw new Api404Error('Email tidak ditemukan')
-
-        return student
-    } catch (error) {
-        throw error
-    }
-}
-
-siswaSchema.statics.signUp = async function (this: SiswaModel, nis: string, email: string, password: string) {
-    const siswa = await this.findOne({ nis: nis })
-    const { account } = siswa
-    if (!siswa) throw new Api404Error('Nis siswa tidak ditemukan')
-    if (account && account.email && account.status !== AccountStatus.TIDAK_ADA) throw new Api401Error('Siswa ini telah memiliki akun')
-
-    siswa.account.status = AccountStatus.MENUNGGU
-
-    siswa.account.email = email
-    siswa.account.password = password
-
-
-    await siswa.save()
-}
-
-siswaSchema.statics.signIn = async function (this: SiswaModel, email: string, password: string) {
-    const student = await this.findOne({ 'account.email': email })
-    if (!student) throw new Api404Error('Email tidak ditemukan')
-
-    const isValidated = await compare(password, student.account.password)
-    if (!isValidated) throw new Api401Error('Password salah')
-
-    if (student.account.status === 'MENUNGGU') throw new Api401Error('Akun belum aktif, harap hubungi admin')
-    else if (student.account.status === 'NONAKTIF') throw new Api401Error('Akun tidak aktif')
-
-
-    const token = await student.generateToken()
-    await student.save()
-
-    return { siswa: student.getDataSiswa(), token }
-}
-
-siswaSchema.statics.findByNis = async function (this: SiswaModel, nis: string) {
-    try {
-        const student = await this.findOne({ nis })
-        if (!student) throw new Api404Error('Siswa tidak ditemukan')
-
-        return student
-    } catch (error) {
-        throw error
-    }
-}
-
-siswaSchema.statics.findSiswaByName = async function (this: SiswaModel, name: string) {
-    try {
-        const siswaDocuments = await this.find({ namaLengkap: { $regex: name, $options: 'i' } })
-        return siswaDocuments
-    } catch (error) {
-        throw error
-    }
-}
-
-siswaSchema.methods.getFullClass = function (this: DataSiswa) {
-    if (this.kelasNo === 1) {
-        const fullClass = `${this.kelasString} ${this.jurusan}`
-        return fullClass
-    } else {
-        const fullClass = `${this.kelasString} ${this.jurusan} ${this.kelasNo}`
-        return fullClass
-    }
-}
-
 siswaSchema.methods.getDataSiswa = function (this: DocumentBaseDataSiswa) {
     const dataSiswaObject: SecureStudentData & { account: SecureStudentAccountData } & { _id: string } = {
         _id: this._id,
@@ -287,6 +185,10 @@ siswaSchema.methods.wipeTokens = function (this: DocumentBaseDataSiswa) {
     this.account.tokens = []
 }
 
+siswaSchema.methods.wipeSuperToken = function (this: DocumentBaseDataSiswa) {
+    this.account.superToken = ''
+}
+
 siswaSchema.methods.generateToken = async function (this: DocumentBaseDataSiswa) {
     const { token } = await createStudentJwt(this)
     if (_.isArray(this.account.tokens)) this.account.tokens.push({ token })
@@ -305,13 +207,15 @@ siswaSchema.pre('save', async function (next) {
         this.account.password = hashed
     }
 
-    if (this.account && this.account.tokens && this.account.tokens.length > 3) {
-        this.account.tokens.splice(0, 1)
+    if (this.isModified('account.tokens')) {
+        while (this.account.tokens.length > 3) {
+            this.account.tokens.shift()
+        }
     }
 
     next()
 })
 
-const SiswaModel = mongoose.model<DataSiswa, SiswaModel>('student', siswaSchema)
+const StudentModel = mongoose.model<DataSiswa, StudentModel>('student', siswaSchema)
 
-export default SiswaModel
+export default StudentModel

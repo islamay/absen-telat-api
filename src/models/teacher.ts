@@ -18,7 +18,8 @@ type SecureTeacherData = Omit<ITeacher, 'password' | 'tokens' | 'superToken'> & 
 interface ITeacherMethods {
     secureData: () => SecureTeacherData,
     generateToken: () => Promise<string>,
-    wipeTokens: () => Promise<void>
+    wipeTokens: () => void,
+    wipeSuperToken: () => void;
 }
 
 type TeacherDehidrated = Model<ITeacher, {}, ITeacherMethods>
@@ -71,6 +72,11 @@ TeacherSchema.pre('save', async function (this, next) {
         this.password = await hash(this.password)
     }
 
+    if (this.isModified('tokens')) {
+        while (this.tokens.length > 3) {
+            this.tokens.shift()
+        }
+    }
     next()
 })
 
@@ -86,6 +92,13 @@ TeacherSchema.methods.generateToken = async function (this: TeacherDocument) {
     return token
 }
 
+TeacherSchema.methods.wipeTokens = async function (this: TeacherDocument) {
+    this.tokens = []
+}
+
+TeacherSchema.methods.wipeSuperToken = async function (this: TeacherDocument) {
+    this.superToken = ''
+}
 
 const TeacherModel = mongoose.model<ITeacher, ITeacherModel>('teacher', TeacherSchema)
 

@@ -11,7 +11,7 @@ import getLateness from '../controllers/lateness/get'
 import pagination from '../middlewares/pagination'
 import validate from '../middlewares/validate'
 import postLateness from '../controllers/lateness/post'
-import auth, { adminAuth, authenticate, authIn } from '../middlewares/auth'
+import { adminAuth, authenticate, authIn } from '../middlewares/auth'
 import { AccountType } from '../helpers/accountEnum'
 import getLatenessById from '../middlewares/getLatenessById'
 import patchLateness from '../controllers/lateness/patch'
@@ -30,7 +30,7 @@ const createTerlambatRoutes = () => {
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa text'),
         validate(),
-        auth(AccountType.GURU),
+        authIn([authenticate(AccountType.GURU)]),
         query('page')
             .optional()
             .isInt().withMessage('Page harus berupa bilangan bulat')
@@ -55,7 +55,7 @@ const createTerlambatRoutes = () => {
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa text'),
         validate(),
-        auth(AccountType.GURU),
+        authIn([authenticate(AccountType.GURU)]),
         body('nis')
             .notEmpty().withMessage('Nis tidak boleh kosong')
             .isString().withMessage('Nis harus berupa text'),
@@ -66,23 +66,6 @@ const createTerlambatRoutes = () => {
         validate(),
         postLateness()
     )
-
-    // router.get('/download',
-    //     header('authorization')
-    //         .notEmpty().withMessage('Token tidak boleh kosong')
-    //         .isString().withMessage('Token harus berupa text'),
-    //     validate(),
-    //     auth(AccountType.GURU),
-    //     query('start')
-    //         .isISO8601()
-    //         .withMessage('start tidak valid'),
-    //     query('end')
-    //         .optional()
-    //         .isISO8601()
-    //         .withMessage('end tidak valid'),
-    //     validate(),
-
-    // )
 
     router.get('/download',
         query('start')

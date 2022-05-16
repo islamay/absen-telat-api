@@ -18,9 +18,12 @@ export const createTeacherService = async (name: string, email: string): Promise
 
 export const validateTeacherService = async (email: string, password: string): Promise<TeacherDocument> => {
     const teacher = await TeacherModel.findOne({ email })
-
     if (!teacher) throw new Api404Error('Email tidak ditemukan untuk guru manapul')
-
     await compare(password, teacher.password)
+    return teacher
+}
+
+export const findByEmail = async (email: string) => {
+    const teacher = await TeacherModel.findOne({ email })
     return teacher
 }

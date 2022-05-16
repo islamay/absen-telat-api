@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 import { ILatenessDocument } from '../../models/lateness'
-import SiswaModel, { DocumentBaseDataSiswa } from '../../models/student'
+import { DocumentBaseDataSiswa } from '../../models/student'
 
 interface Params {
     nis: string

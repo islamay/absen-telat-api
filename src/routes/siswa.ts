@@ -4,18 +4,19 @@ import postStudent from '../controllers/student/post'
 import getStudent from '../controllers/student/get'
 import getByNis from '../controllers/student/getByNis'
 import studentSignIn from '../controllers/student/signIn'
-import studentSignUp from '../controllers/student/signUp'
 import changePassword from '../controllers/student/changePassword'
-import requestChangePassword from '../controllers/student/requestChangePassword'
-import verifyChangePassword from '../controllers/student/verifyChangePassword'
 import SiswaModel, { Jurusan } from '../models/student'
 import validate from '../middlewares/validate'
 import { AccountStatus, AccountType } from '../helpers/accountEnum'
 import signOut from '../controllers/student/signOut'
-import auth, { authenticate, adminAuth, authIn } from '../middlewares/auth'
+import { authenticate, adminAuth, authIn } from '../middlewares/auth'
 import getStudentByNis from '../middlewares/getStudentByNisMiddleware'
 import patchStudent from '../controllers/student/patch'
 import Api401Error from '../error/Api401Error'
+import Api403Error from '../error/Api403Error'
+import requestChangePassword from '../controllers/student/requestChangePassword'
+import resetPassword from '../controllers/resetPassword'
+import putResetPassword from '../controllers/student/putResetPassword'
 
 
 const createStudentRoute = () => {
@@ -75,40 +76,25 @@ const createStudentRoute = () => {
         studentSignIn()
     )
 
-    router.post('/signup',
-        body('nis')
-            .notEmpty().withMessage('Nis tidak boleh kosong')
-            .isString().withMessage('Nis harus berupa text'),
+    router.post('/request-reset-password',
         body('email')
             .notEmpty().withMessage('Email tidak boleh kosong')
             .isString().withMessage('Email harus berupa text')
             .isEmail().withMessage('Email tidak valid'),
-        body('password')
-            .notEmpty().withMessage('Password tidak boleh kosong')
-            .isString().withMessage('Password harus berupa text'),
-        validate(),
-        studentSignUp()
-    )
-
-    router.post('/permintaan-ganti-password',
-        body('email')
-            .notEmpty().withMessage('Email tidak boleh kosong')
-            .isString().withMessage('Email tidak valid'),
         validate(),
         requestChangePassword()
     )
 
-    router.post('/verifikasi-ganti-password',
-        verifyChangePassword()
-    )
+    router.get('/reset-password', resetPassword())
+
+    router.post('/reset-password', putResetPassword())
 
     router.get('/:nis',
         header('authorization')
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa string'),
         validate(),
-        authIn([authenticate(AccountType.GURU), authenticate(AccountType.SISWA, req => {
-            //@ts-ignore
+        authIn([authenticate(AccountType.GURU), authenticate<{ nis: string }>(AccountType.SISWA, req => {
             if (req.params.nis !== req.body.auth.student.nis) throw new Api401Error('Bukan pemilik dokumen')
         })]),
         getStudentByNis(),
@@ -130,19 +116,22 @@ const createStudentRoute = () => {
             .notEmpty().withMessage('Token tidak boleh kosong')
             .isString().withMessage('Token harus berupa text'),
         validate(),
-        auth(AccountType.SISWA),
+        authIn([authenticate(AccountType.SISWA)]),
         signOut()
     )
 
-    router.post('/:nis/password')
-
     router.put('/:nis/password',
+        header('authorization')
+            .notEmpty().withMessage('Token tidak boleh kosong')
+            .isString().withMessage('Token harus berupa text'),
+        validate(),
+        authIn([authenticate<{ nis: string }>(AccountType.SISWA, (req) => {
+            if (req.params.nis !== req.body.auth.student.nis) {
+                throw new Api403Error('Tidak berhak mengubah dokumen')
+            }
+        })]),
         changePassword()
     )
-
-    router.post('/:nis/email')
-
-    router.put('/:nis/email')
 
     return router
 }

@@ -1,7 +1,7 @@
 import { NextFunction, RequestHandler, Request, Response } from 'express'
 import { AccountType, TeacherRole } from '../helpers/accountEnum'
 import TeacherModel, { TeacherDocument, ITeacherModel } from '../models/teacher'
-import SiswaModel, { DocumentBaseDataSiswa, SiswaModel as ISiswaModel } from '../models/student'
+import StudentModel, { DocumentBaseDataSiswa, StudentModel as IStudentModel } from '../models/student'
 import { StudentJwtPayload, TeacherJwtPayload, verifyStudentJwt, verifyTeacherJwt } from '../helpers/jwtManager'
 import splitBearerToken from '../helpers/splitBearerToken'
 import Api401Error from '../error/Api401Error'
@@ -17,38 +17,6 @@ export interface BodyAfterAuth {
     }
 }
 
-const auth = (type: AccountType): RequestHandler<{}, {}, BodyAfterAuth> => {
-
-    return async (req, res, next) => {
-        let model: ISiswaModel | ITeacherModel;
-        const token = splitBearerToken(req.headers.authorization)
-
-        if (type === AccountType.GURU) model = TeacherModel
-        else model = SiswaModel
-
-
-        try {
-            const verifyingToken = type === AccountType.GURU ? verifyTeacherJwt(token) : verifyStudentJwt(token)
-            const queryingUser = type === AccountType.GURU ? model.findOne({ 'tokens.token': token }) : model.findOne({ account: { 'tokens.token': token } })
-
-            const [decoded, user] = await Promise.all([verifyingToken, queryingUser])
-
-            if (!user) throw new Api401Error('Token invalid')
-
-            req.body.auth = {
-                type: type,
-                token: token,
-                decoded: decoded,
-                [type === AccountType.GURU ? 'teacher' : 'student']: user
-            }
-
-            next()
-
-        } catch (error) {
-            next(error)
-        }
-    }
-}
 
 type AuthenticateProcess<T1 = {}, T2 = {}, T3 = {}> = (req: Request<T1, {}, BodyAfterAuth & T2, T3>) => Promise<void>
 type Authenticate = <T1 = {}, T2 = {}, T3 = {}>(type: AccountType, cb?: (req: Request<T1, {}, BodyAfterAuth & T2, T3>) => void | Promise<void>) => AuthenticateProcess<T1, T2, T3>
@@ -56,10 +24,10 @@ type AuthIn<T1 = {}, T2 = {}, T3 = {}> = (auths: AuthenticateProcess[]) => Reque
 type AdminAuth = (req: Request<{}, {}, BodyAfterAuth>) => void | Promise<void>
 
 export const authenticate: Authenticate = (type, cb) => {
-    let model: ISiswaModel | ITeacherModel;
+    let model: IStudentModel | ITeacherModel;
 
     if (type === AccountType.GURU) model = TeacherModel
-    else model = SiswaModel
+    else model = StudentModel
 
     return async (req) => {
         const token = splitBearerToken(req.headers.authorization)
@@ -105,5 +73,3 @@ export const authIn: AuthIn = (authArray) => {
         }
     }
 }
-
-export default auth

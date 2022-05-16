@@ -62,7 +62,7 @@ const addKeterlambatanRow = (worksheet: ExcelJS.Worksheet, keterlambatan: (ILate
         {
             no: no + 1,
             nama: keterlambatan.student.namaLengkap,
-            kelas: keterlambatan.student.getFullClass(),
+            kelas: keterlambatan.student.fullClass,
             tanggal: keterlambatan.date,
             alasan: keterlambatan.alasan
         }

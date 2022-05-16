@@ -11,7 +11,6 @@ const main = async () => {
         app.listen(port, () => console.log(`Running on port ${port} | http://localhost:${port}`))
     } catch (error) {
         console.log(error);
-        console.log(error.message);
     }
 }
 

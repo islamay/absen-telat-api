@@ -39,6 +39,7 @@ export interface StudentSuperJwtPayload {
 
 const jwtExpiresIn = '30 days'
 
+
 const getKey = (accType: AccountType, superJwt?: boolean) => {
     let key: string;
     if (accType === AccountType.GURU) {
@@ -83,8 +84,8 @@ export const createStudentJwt = async (studentDocument: DocumentBaseDataSiswa) =
 
 export const createStudentSuperJwt = async (studentDocument: DocumentBaseDataSiswa) => {
     const payload: StudentSuperJwtPayload = { nis: studentDocument.nis, pass: Math.floor(100000 + Math.random() * 900000).toString() }
-    const superToken = await createJwt(AccountType.SISWA, payload, true)
-    return { superToken, payload }
+    const token = await createJwt(AccountType.SISWA, payload, true)
+    return { token, payload }
 }
 
 export const verifyTeacherJwt = async (token: string) => {
@@ -93,7 +94,7 @@ export const verifyTeacherJwt = async (token: string) => {
 }
 
 export const verifyTeacherSuperJwt = async (token: string) => {
-    const payload = await verifyJwt<TeacherSuperJwtPayload>(AccountType.GURU, token)
+    const payload = await verifyJwt<TeacherSuperJwtPayload>(AccountType.GURU, token, true)
     return payload
 }
 

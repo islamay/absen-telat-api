@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express'
-import SiswaModel from '../../models/student'
+import { signIn } from '../../services/student'
 
 interface Body {
     email: string,
@@ -11,7 +11,7 @@ const studentSignIn = (): RequestHandler<{}, {}, Body> => {
     return async (req, res, next) => {
         const { email, password } = req.body
         try {
-            const secureStudentAndToken = await SiswaModel.signIn(email, password)
+            const secureStudentAndToken = await signIn(email, password)
 
             res.type('application/json')
             res.json(secureStudentAndToken)
