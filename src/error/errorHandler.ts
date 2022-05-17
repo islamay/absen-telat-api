@@ -3,14 +3,10 @@ import BaseError from './baseError'
 import { JsonWebTokenError } from 'jsonwebtoken'
 import Api401Error from './Api401Error'
 
-const logError = () => {
-
-}
-
 const createErrorMiddleware = () => {
 
     return (err: any, req: Request, res: Response, next: NextFunction) => {
-        console.log(err);
+        console.log(err.message);
 
         if (err instanceof BaseError) {
             res.status(err.statusCode)

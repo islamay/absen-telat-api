@@ -20,9 +20,6 @@ const createRoutes = () => {
     const router = express.Router()
 
     router.get('/',
-        header('Authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong'),
-        validate(),
         authIn([authenticate(AccountType.GURU, adminAuth)]),
         query('page')
             .optional()
@@ -39,9 +36,6 @@ const createRoutes = () => {
     )
 
     router.post('/',
-        header('Authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong'),
-        validate(),
         authIn([authenticate(AccountType.GURU, adminAuth)]),
         body('nama')
             .notEmpty().withMessage('Nama tidak boleh kosong')
@@ -77,9 +71,6 @@ const createRoutes = () => {
     router.post('/reset-password', putResetPassword())
 
     router.get('/:id',
-        header('authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong'),
-        validate(),
         authIn([authenticate(AccountType.GURU, adminAuth), authenticate<{ id: string }>(AccountType.GURU, (req) => {
             if (req.body.auth.teacher._id !== req.params.id) throw new Api403Error('Tidak berhak melihat dokumen')
         })]),
@@ -87,9 +78,6 @@ const createRoutes = () => {
     )
 
     router.patch('/:id',
-        header('authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong'),
-        validate(),
         authIn([authenticate(AccountType.GURU, adminAuth), authenticate<{ id: string }>(AccountType.GURU, (req) => {
             if (req.body.auth.teacher._id !== req.params.id) throw new Api403Error('Tidak berhak mengubah dokumen')
         })]),
@@ -98,9 +86,6 @@ const createRoutes = () => {
     )
 
     router.put('/:id/password',
-        header('authorization')
-            .notEmpty().withMessage('Token tidak boleh kosong'),
-        validate(),
         authIn([authenticate(AccountType.GURU)]),
         getTeacherById(),
         changePassword()

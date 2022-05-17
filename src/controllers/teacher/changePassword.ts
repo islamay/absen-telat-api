@@ -13,9 +13,7 @@ const changePassword = (): RequestHandler<{}, {}, Body> => {
     return async (req, res, next) => {
         const { oldPassword, newPassword, auth, teacher } = req.body
         try {
-            if (
-                auth.teacher.id !== teacher.id
-            ) throw new Api403Error('Tidak berhak mengubah dokumen')
+            if (auth.teacher.id !== teacher.id) throw new Api403Error('Tidak berhak mengubah dokumen')
 
             await compare(oldPassword, teacher.password)
             teacher.password = newPassword

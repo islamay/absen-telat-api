@@ -65,6 +65,9 @@ export const authIn: AuthIn = (authArray) => {
 
     return async (req, res, next) => {
         try {
+            const token = req.headers.authorization
+            if (!token) throw new Api401Error('Tidak memiliki akses')
+
             const promises = authArray.map(v => v(req))
             await Promise.any(promises)
             next()
