@@ -1,13 +1,6 @@
-
-
 export enum AccountType {
     GURU = 'GURU',
     SISWA = 'SISWA'
-}
-
-export enum TeacherRole {
-    ADMIN = 'ADMIN',
-    REGULAR = 'REGULAR'
 }
 
 export enum AccountStatus {

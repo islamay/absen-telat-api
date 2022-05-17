@@ -1,6 +1,7 @@
 import mongoose, { Model, Document } from 'mongoose'
 import { createTeacherJwt } from '../helpers/jwtManager'
-import { AccountStatus, TeacherRole } from '../helpers/accountEnum'
+import { AccountStatus } from '../types/account'
+import { TeacherRole } from '../types/teacher'
 import { hash } from '../helpers/crypto'
 
 interface ITeacher {

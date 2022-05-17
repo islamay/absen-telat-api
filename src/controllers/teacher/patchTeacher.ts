@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express'
-import { AccountStatus, TeacherRole } from '../../helpers/accountEnum'
+import { AccountStatus } from '../../types/account'
+import { TeacherRole } from '../../types/teacher'
 import { BodyAfterGetTeacherById } from '../../middlewares/getTeacherById'
 
 interface Body extends BodyAfterGetTeacherById {

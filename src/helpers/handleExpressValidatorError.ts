@@ -1,4 +1,3 @@
-import { NextFunction } from 'express'
 import { Result, ValidationError } from 'express-validator'
 import Api400Error from '../error/Api400Error'
 

@@ -1,8 +1,8 @@
 import { RequestHandler } from 'express'
 import Api401Error from '../../error/Api401Error'
-import { AccountType } from '../../helpers/accountEnum'
+import { AccountType } from '../../types/account'
 import { BodyAfterAuth } from '../../middlewares/auth'
-import { BodyAfterGetLatenessById, ParamsForGetLatenessById } from '../../middlewares/getLatenessById'
+import { BodyAfterGetLatenessById } from '../../middlewares/getLatenessById'
 
 interface Body extends BodyAfterGetLatenessById, BodyAfterAuth {
     alasan: string,

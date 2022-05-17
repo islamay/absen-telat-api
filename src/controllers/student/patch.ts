@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 import Api401Error from '../../error/Api401Error'
-import { AccountStatus, AccountType } from '../../helpers/accountEnum'
+import { AccountStatus, AccountType } from '../../types/account'
 import { BodyAfterAuth } from '../../middlewares/auth'
 import { BodyAfterGetStudentByNis } from '../../middlewares/getStudentByNisMiddleware'
 

@@ -1,12 +1,9 @@
-import { compare } from 'bcrypt';
 import mongoose, { Document, Model } from 'mongoose'
-import { createStudentJwt } from '../helpers/jwtManager';
-import Api401Error from '../error/Api401Error';
-import Api404Error from '../error/Api404Error';
+import { createStudentJwt } from '../helpers/jwtManager'
 import enumValues from '../helpers/enumValues'
-import { hash } from '../helpers/crypto';
-import { AccountStatus } from '../helpers/accountEnum';
-import _ from 'lodash';
+import { hash } from '../helpers/crypto'
+import { AccountStatus } from '../types/account'
+import _ from 'lodash'
 
 const generateKelasString = function (kelas: Kelas) {
     switch (kelas) {

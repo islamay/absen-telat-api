@@ -1,6 +1,6 @@
 import { compare } from '../helpers/crypto'
 import Api404Error from '../error/Api404Error'
-import { AccountStatus } from '../helpers/accountEnum'
+import { AccountStatus } from '../types/account'
 import StudentModel, { DocumentBaseDataSiswa, DataSiswa } from '../models/student'
 
 export type CreateStudent = Omit<DataSiswa, 'kelasString' | 'fullClass' | 'hasAccount' | 'account'> & { email: string }

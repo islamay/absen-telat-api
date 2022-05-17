@@ -1,5 +1,6 @@
 import { NextFunction, RequestHandler, Request, Response } from 'express'
-import { AccountType, TeacherRole } from '../helpers/accountEnum'
+import { AccountType } from '../types/account'
+import { TeacherRole } from '../types/teacher'
 import TeacherModel, { TeacherDocument, ITeacherModel } from '../models/teacher'
 import StudentModel, { DocumentBaseDataSiswa, StudentModel as IStudentModel } from '../models/student'
 import { StudentJwtPayload, TeacherJwtPayload, verifyStudentJwt, verifyTeacherJwt } from '../helpers/jwtManager'
