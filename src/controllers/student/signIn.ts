@@ -11,10 +11,13 @@ const studentSignIn = (): RequestHandler<{}, {}, Body> => {
     return async (req, res, next) => {
         const { email, password } = req.body
         try {
-            const secureStudentAndToken = await signIn(email, password)
+            const result = await signIn(email, password)
 
             res.type('application/json')
-            res.json(secureStudentAndToken)
+            res.json({
+                siswa: result.student.getDataSiswa(),
+                token: result.token,
+            })
         } catch (error) {
             next(error)
         }

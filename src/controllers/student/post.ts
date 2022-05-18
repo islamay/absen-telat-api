@@ -1,5 +1,4 @@
 import { RequestHandler } from 'express'
-import SiswaModel, { DataSiswa } from '../../models/student'
 import { CreateStudent, createStudent } from '../../services/student'
 
 type Body = CreateStudent
@@ -7,7 +6,7 @@ type Body = CreateStudent
 const postStudent = (): RequestHandler<{}, {}, Body> => {
 
     return async (req, res, next) => {
-        const { nis, namaLengkap, kelas, kelasNo, jurusan, email } = req.body
+        const { nis, namaLengkap, kelas, kelasNo, jurusan, email = '' } = req.body
 
         try {
             const student = await createStudent({

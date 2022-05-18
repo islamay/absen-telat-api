@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch src --ext ts,json --exec node -r ts-node/register src/server.ts",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "build": "tsc -p .",
-    "start": "node -r ts-node/register src/server.ts"
+    "start": "node dist/server",
+    "dev": "nodemon --watch src --ext ts,json --exec node -r ts-node/register src/server.ts"
   },
   "keywords": [],
   "author": "",

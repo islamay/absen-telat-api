@@ -60,6 +60,9 @@ const createStudentRoute = () => {
         body('jurusan')
             .notEmpty().withMessage('Jurusan tidak boleh kosong')
             .isIn(Object.values(Jurusan)).withMessage('Jurusan tidak valid'),
+        body('email')
+            .optional()
+            .isEmail().withMessage('Email tidak valid'),
         validate(),
         postStudent()
     )
