@@ -1,43 +1,26 @@
 import { RequestHandler } from 'express'
-import Api401Error from '../../error/Api401Error'
-import { verifyStudentSuperJwt } from '../../helpers/jwtManager'
-import splitBearerToken from '../../helpers/splitBearerToken'
-import SiswaModel from '../../models/student'
-import { findByNis } from '../../services/student'
+import { BodyAfterAuth } from '../../middlewares/auth'
+import { compare } from '../../helpers/crypto'
+import { BodyAfterGetStudentByNis } from '../../middlewares/getStudentByNisMiddleware'
 
-interface Body {
-    password: string
+interface Body extends BodyAfterAuth, BodyAfterGetStudentByNis {
+    oldPassword: string,
+    newPassword: string
 }
 
-interface Params {
-    nis: string
-}
-
-const changePassword = (): RequestHandler<Params, {}, Body> => {
-
+const changePassword = (): RequestHandler<{}, {}, Body> => {
     return async (req, res, next) => {
-        const { nis } = req.params
-        const { password } = req.body
-        const { authorization: bearerToken } = req.headers
-
+        const { oldPassword, newPassword, auth, student } = req.body
         try {
-            const suppliedToken = splitBearerToken(bearerToken)
-            const queryStudent = findByNis(nis)
-            const validateToken = verifyStudentSuperJwt(suppliedToken)
-            const [student, decodedToken] = await Promise.all([queryStudent, validateToken])
 
-            if (student.account.superToken !== suppliedToken) throw new Api401Error('Token tidak valid')
-
-            student.account.password = password
+            await compare(oldPassword, student.account.password)
+            student.account.password = newPassword
             student.wipeTokens()
+            student.wipeSuperToken()
             const token = await student.generateToken()
             await student.save()
-
-            const secureData = student.getDataSiswa()
-
             res.type('application/json')
-            res.json({ token, siswa: secureData })
-
+            res.json({ guru: student.getDataSiswa(), token })
         } catch (error) {
             next(error)
         }

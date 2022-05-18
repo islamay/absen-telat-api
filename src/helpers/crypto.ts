@@ -7,7 +7,6 @@ export const hash = async (data: string) => {
         const hashed = await bcrypt.hash(data, 8)
         return hashed
     } catch (error) {
-        console.log(error);
         return null
     }
 }

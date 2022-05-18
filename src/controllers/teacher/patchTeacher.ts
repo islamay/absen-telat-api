@@ -11,10 +11,8 @@ interface Body extends BodyAfterGetTeacherById {
 const patchTeacher = (): RequestHandler<any, any, Body> => {
     return async (req, res, next) => {
         const { role, status, teacher } = req.body
-        console.log(req.body);
 
         if (!!role) {
-            console.log('a');
             teacher.role = role
         }
         if (!!status) teacher.status = status

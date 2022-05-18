@@ -11,7 +11,6 @@ const putResetPassword = (): RequestHandler<{}, {}, Body> => {
 
     return async (req, res) => {
         const { superToken, password } = req.body
-        console.log(req.body);
 
 
         try {

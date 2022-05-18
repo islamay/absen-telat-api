@@ -79,7 +79,7 @@ const createStudentRoute = () => {
         studentSignIn()
     )
 
-    router.post('/request-reset-password',
+    router.post('/request-change-password',
         body('email')
             .notEmpty().withMessage('Email tidak boleh kosong')
             .isString().withMessage('Email harus berupa text')
@@ -133,6 +133,7 @@ const createStudentRoute = () => {
                 throw new Api403Error('Tidak berhak mengubah dokumen')
             }
         })]),
+        getStudentByNis(),
         changePassword()
     )
 

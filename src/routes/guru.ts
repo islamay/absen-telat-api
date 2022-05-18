@@ -57,7 +57,7 @@ const createRoutes = () => {
         signInTeacher()
     )
 
-    router.post('/request-reset-password',
+    router.post('/request-change-password',
         body('email')
             .notEmpty().withMessage('Email tidak boleh kosong')
             .isString().withMessage('Email harus berupa text')

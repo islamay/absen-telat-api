@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express'
 import StudentModel from '../../models/student'
-import { verifyTeacherSuperJwt } from '../../helpers/jwtManager'
+import { verifyStudentSuperJwt } from '../../helpers/jwtManager'
 
 interface Body {
     superToken: string,
@@ -12,7 +12,7 @@ const putResetPassword = (): RequestHandler<{}, {}, Body> => {
     return async (req, res) => {
         const { superToken, password } = req.body
         try {
-            await verifyTeacherSuperJwt(superToken)
+            await verifyStudentSuperJwt(superToken)
             const student = await StudentModel.findOne({ 'account.superToken': superToken })
             if (!student) {
                 res.status(401)

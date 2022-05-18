@@ -27,12 +27,6 @@ export const createLateness = async ({ nis, purpose, guruId }: { nis: string, pu
         }
     }).exec()
 
-    console.log({
-        gte: today,
-        lt: tomorrow
-    });
-
-    console.log(isAlreadyRecordedToday);
 
 
     if (isAlreadyRecordedToday) throw new Api400Error('ValidationError', 'Siswa sudah diabsen hari ini')
